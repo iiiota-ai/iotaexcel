@@ -63,6 +63,13 @@ sh scripts/test.sh
 
 GitHub Actions 会在 push 和 pull request 时执行格式检查、文档检查、Go 测试，并运行 `scripts/build.sh --all` 验证多平台发布产物可以正常生成。
 
+推送 `v*` tag 时，GitHub Actions 会自动创建 GitHub Release，并上传 `dist/` 下的多平台可执行文件和 `sha256sums.txt`。示例：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## 快速开始
 
 ### 导出 `.bytes`

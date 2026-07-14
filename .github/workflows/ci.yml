@@ -5,7 +5,12 @@ on:
     branches:
       - main
       - master
+    tags:
+      - "v*"
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   test:
@@ -33,3 +38,9 @@ jobs:
 
       - name: Build release artifacts
         run: sh scripts/build.sh --all
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
