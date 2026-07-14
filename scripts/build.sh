@@ -29,8 +29,26 @@ build_target() {
   GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 "$GO_CMD" build -trimpath -ldflags="-s -w" -o "$output" ./cmd/iotaexcel
 }
 
+write_checksums() {
+  checksum_file="dist/sha256sums.txt"
+  : > "$checksum_file"
+  for artifact in dist/iotaexcel-*; do
+    [ -f "$artifact" ] || continue
+    name=$(basename "$artifact")
+    if command -v sha256sum >/dev/null 2>&1; then
+      hash=$(sha256sum "$artifact" | awk '{print $1}')
+    else
+      hash=$(shasum -a 256 "$artifact" | awk '{print $1}')
+    fi
+    printf '%s  %s\n' "$hash" "$name" >> "$checksum_file"
+  done
+  echo "Checksums written to $checksum_file"
+}
+
 cd "$ROOT"
 mkdir -p dist
+mkdir -p .gocache
+export GOCACHE="$ROOT/.gocache"
 
 if [ "${1:-}" = "--all" ]; then
   build_target windows amd64
@@ -41,4 +59,5 @@ else
   build_target "$("$GO_CMD" env GOOS)" "$("$GO_CMD" env GOARCH)"
 fi
 
+write_checksums
 echo "Build outputs written to dist/"

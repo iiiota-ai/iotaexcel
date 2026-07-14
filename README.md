@@ -36,7 +36,32 @@ sh scripts/build.sh
 sh scripts/build.sh --all
 ```
 
-构建产物输出到 `dist/`，默认使用 `CGO_ENABLED=0`、`-trimpath`、`-ldflags="-s -w"` 生成更小的独立可执行文件。
+构建产物输出到 `dist/`，默认使用 `CGO_ENABLED=0`、`-trimpath`、`-ldflags="-s -w"` 生成更小的独立可执行文件。构建脚本会同时生成 `dist/sha256sums.txt`，用于发布后校验下载到的可执行文件是否完整。
+
+构建脚本会把 Go 构建缓存放到项目内的 `.gocache/`，避免本机默认 Go cache 状态影响构建结果。该目录已加入 `.gitignore`。
+
+## 验证
+
+提交前建议运行文档检查和 Go 测试：
+
+Windows:
+
+```powershell
+$env:IOTAEXCEL_NO_PAUSE = "1"
+powershell -ExecutionPolicy Bypass -File scripts/check-docs.ps1
+powershell -ExecutionPolicy Bypass -File scripts/test.ps1
+```
+
+Linux/macOS:
+
+```bash
+sh scripts/check-docs.sh
+sh scripts/test.sh
+```
+
+`scripts/test.ps1` 会设置 UTF-8 输出，并把 `GOCACHE` 指向项目内 `.gocache/` 后执行 `go test ./...`。如果直接双击运行 PowerShell 脚本，默认会在结束前暂停；设置 `IOTAEXCEL_NO_PAUSE=1` 可用于 CI 或自动化脚本。
+
+GitHub Actions 会在 push 和 pull request 时执行格式检查、文档检查、Go 测试，并运行 `scripts/build.sh --all` 验证多平台发布产物可以正常生成。
 
 ## 快速开始
 

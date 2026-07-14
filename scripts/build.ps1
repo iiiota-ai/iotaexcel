@@ -62,8 +62,23 @@ function Build-Target([string]$GoExe, [string]$Goos, [string]$Goarch) {
   }
 }
 
+function Write-Checksums {
+  $checksumPath = Join-Path "dist" "sha256sums.txt"
+  $lines = New-Object System.Collections.Generic.List[string]
+  Get-ChildItem -Path "dist" -File -Filter "iotaexcel-*" |
+    Sort-Object Name |
+    ForEach-Object {
+      $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
+      $lines.Add("$hash  $($_.Name)")
+    }
+  Set-Content -Path $checksumPath -Value $lines -Encoding utf8
+  Write-Host "Checksums written to $checksumPath"
+}
+
 try {
   $goExe = Resolve-GoExe
+  $env:GOCACHE = Join-Path $Root ".gocache"
+  New-Item -ItemType Directory -Force -Path $env:GOCACHE | Out-Null
   New-Item -ItemType Directory -Force -Path "dist" | Out-Null
 
   if ($All) {
@@ -84,6 +99,7 @@ try {
     Build-Target $goExe $goos $goarch
   }
 
+  Write-Checksums
   Write-Host "Build outputs written to dist/"
 } finally {
   Pop-Location

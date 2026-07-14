@@ -1,5 +1,8 @@
 dist/
 out/
 generated/
+.gocache/
+coverage.out
+coverage.html
 *.log
 ~$*.xlsx

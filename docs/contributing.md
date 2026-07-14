@@ -57,14 +57,16 @@ docs(format): 补充 ref<Item> 单元格示例
 
 ## 验证
 
-提交前需要运行文档检查：
+提交前需要运行文档检查和 Go 测试：
 
 ```bash
 scripts/check-docs.sh
+scripts/test.sh
 ```
 
 Windows 环境：
 
 ```powershell
 scripts/check-docs.ps1
+scripts/test.ps1
 ```
