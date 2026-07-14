@@ -1,0 +1,56 @@
+# 输入文件或目录。convert/codegen 使用 Excel，decode 使用 .bytes。
+input=./excels
+
+# 输出目录。
+output=./out
+
+# convert 输出格式，支持 csv/json/bin。
+convertFormat=bin
+
+# decode 输出格式，支持 csv/json。
+decodeFormat=json
+
+# 是否递归扫描输入目录。
+recursive=true
+
+# 可选 sheet 过滤条件，支持 sheet 名或从 1 开始的 sheet 索引；空值表示全部 sheet。
+sheet=
+
+# 输出文件已存在时是否覆盖。
+overwrite=false
+
+# 导出目标字段，支持 client/server/both。
+target=both
+
+# 是否检查 ref<T> 引用目标表和 key 是否存在。
+checkRef=false
+
+# 是否启用严格 schema 校验。当前默认 true。
+strict=true
+
+# .bytes 是否包含字段名和类型名等自描述信息。
+selfDescribing=true
+
+# decode 非自描述 .bytes 时使用的 Excel schema 文件或目录。
+schemaInput=./excels
+
+# decode 时是否同时把 .bytes 结构打印到终端。
+print=false
+
+# decode --print 输出模式，支持 verbose/concise。
+printMode=verbose
+
+# codegen 目标语言，当前支持 csharp。
+lang=csharp
+
+# 生成 C# 代码的命名空间。
+package=DataConfig
+
+# 日志级别，支持 debug/info/warn/error。
+logLevel=info
+
+# 日志格式，支持 text/json。
+logFormat=text
+
+# 可选日志文件路径，空值表示只输出到终端。
+logFile=

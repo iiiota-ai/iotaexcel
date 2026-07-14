@@ -1,0 +1,4 @@
+# iotaexcel ignore rules
+~$*.xlsx
+*.bak.xlsx
+temp/

@@ -1,0 +1,5 @@
+dist/
+out/
+generated/
+*.log
+~$*.xlsx

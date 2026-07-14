@@ -1,0 +1,133 @@
+# 代码生成
+
+MVP 阶段代码生成目标语言为 C#。
+
+```bash
+iotaexcel codegen --input ./excels --output ./generated --lang csharp
+```
+
+## 命名规则
+
+- Excel 文件名会追加 `.config` 后缀作为生成的代码文件名。例如 `Config.xlsx` 会生成 `Config.config.cs`。
+- Sheet 名会追加 `Config` 后缀作为 C# 数据类名。例如 `Item` 会生成 `ItemConfig`。
+- 每个 sheet 还会生成一个一一对应的 loader/table 类，命名为 `Sheet名ConfigTable`。例如 `Item` 会生成 `ItemConfigTable`。
+- table 类内部数据集合字段名固定为 `datas`，只读公开属性为 `Datas`。
+- table 类只生成安全查询方法：`TryGetBy<Key字段名>`。`<Key字段名>` 直接使用 sheet 中的 key 字段名，不做首字母大小写转换。例如 key 字段为 `id` 时生成 `TryGetByid`。
+- table 类同时生成异步加载方法 `LoadAsync(Func<string, Task<byte[]>> readBytesAsync)`。异步方法只负责读取 `.bytes`，读取完成后复用同步 `Load(byte[])` 解码；读取文件名遵循 `Excel名_Sheet名Config.bytes`。
+- 两者都必须匹配 `^[A-Za-z_][A-Za-z0-9_]*$`。
+- C# 命名空间默认是 `DataConfig`。
+
+## CodegenSchema
+
+生成器使用规范化后的 schema 数据：
+
+- 源 Excel 文件
+- sheet 名
+- target
+- key 字段
+- 字段列表
+- fieldNo
+- wireType
+- binaryVersion
+- schemaHash
+
+生成的读取代码必须使用和 `.bytes` 写入端一致的 `fieldNo` 和 `wireType`。
+
+## 输出文件
+
+每次 codegen 会输出两类 C# 文件：
+
+- `<Excel文件名>.config.cs`：包含该 Excel 中各个 sheet 对应的业务配置数据类和 table loader 类。
+- `IotaExcelRuntime.cs`：共享 `.bytes` 读取 runtime，包含 `IotaBytesReader` 和 `IotaBytesRuntime`。
+
+批量处理多个 Excel 时，`IotaExcelRuntime.cs` 只需要一份。生成器会复用内容一致的 runtime 文件，避免每个业务配置文件重复内嵌相同读取逻辑。
+
+## 读取代码约定
+
+生成的 C# table loader 类会暴露基于 key 查询的 API：
+
+```csharp
+SheetNameConfigTable Load(byte[] data)
+Task<SheetNameConfigTable> LoadAsync(Func<string, Task<byte[]>> readBytesAsync)
+```
+
+生成的 reader 会解析 `.bytes` 外层头部，并要求文件版本等于当前 binaryVersion；随后读取 `selfDescribing` 标记并据此跳过字段元数据，再按 protobuf 风格 TLV 解码每一行，最终返回以 sheet 唯一 key 建立索引的字典。
+
+## 业务层接入方式
+
+业务项目接入导出结果时，需要使用同一批 Excel 生成出来的两类产物：
+
+- `.bytes` 文件：由 `convert --format bin` 输出，作为业务运行时资源分发。
+- C# 代码文件：由 `codegen --lang csharp` 输出，包括 `Excel名.config.cs` 和共享的 `IotaExcelRuntime.cs`。
+
+接入步骤：
+
+1. 把 `Excel名.config.cs` 和 `IotaExcelRuntime.cs` 加入业务 C# 工程编译。
+2. 把对应 `.bytes` 文件放入业务项目的资源目录、StreamingAssets、Addressables、AssetBundle、服务器下发目录或其他资源系统中。
+3. 运行时读取 `.bytes` 的完整字节数组。
+4. 调用对应的 `Sheet名ConfigTable.Load(byte[])` 或 `LoadAsync(Func<string, Task<byte[]>>)` 得到 table 实例。
+5. 通过 `TryGetBy<Key字段名>` 按唯一 key 获取单行配置，或通过 `Datas` 遍历全部配置。
+
+同步读取示例：
+
+```csharp
+using System;
+using System.IO;
+using DataConfig;
+
+public static class ConfigBootstrap
+{
+    public static ItemConfigTable LoadItems(string configDir)
+    {
+        var path = Path.Combine(configDir, "Config_ItemConfig.bytes");
+        var bytes = File.ReadAllBytes(path);
+        return ItemConfigTable.Load(bytes);
+    }
+}
+
+var itemTable = ConfigBootstrap.LoadItems("Configs");
+if (itemTable.TryGetByid(1001, out var item))
+{
+    Console.WriteLine(item.name);
+}
+```
+
+异步资源系统接入示例：
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using DataConfig;
+
+public static class ConfigBootstrap
+{
+    public static Task<ItemConfigTable> LoadItemsAsync(Func<string, Task<byte[]>> readBytesAsync)
+    {
+        return ItemConfigTable.LoadAsync(readBytesAsync);
+    }
+}
+
+var itemTable = await ConfigBootstrap.LoadItemsAsync(ReadBytesAsync);
+```
+
+`LoadAsync` 内部会按生成时约定的文件名调用 `readBytesAsync`，例如 `ItemConfigTable.LoadAsync` 会请求 `Config_ItemConfig.bytes`。业务层只需要在 `readBytesAsync` 中根据文件名从自己的资源系统返回对应字节。
+
+生成的 C# reader 使用编译进代码里的 schema 解析行数据，因此业务运行时不需要调用 CLI 的 `decode` 命令，也不需要读取原始 Excel。`decode` 命令主要用于工具侧排查、导出 CSV/JSON 或验证 `.bytes` 内容。
+
+需要注意：
+
+- `.bytes` 文件、`Excel名.config.cs` 和 `IotaExcelRuntime.cs` 应来自同一次或同一版本的导出流程，避免字段顺序、fieldNo 或类型定义不一致。
+- 生成 reader 会严格检查 `.bytes` 格式版本；版本不匹配会直接抛出异常。
+- 自描述和非自描述 `.bytes` 都可以被生成 reader 读取。生成 reader 依赖的是代码中的 schema，不依赖 `.bytes` 内嵌字段名和类型名。
+- `TryGetBy<Key字段名>` 是安全查询接口；未找到 key 时返回 `false`，业务层应自行决定默认配置、报错或降级策略。
+
+当前 C# reader 支持以下 MVP 类型映射：
+
+- `bool`, `int`, `int32`, `int64`, `datetime`
+- `float`, `double`
+- `string`, `bytes`
+- `array<T>` 映射为 `List<string>?`
+- `map<K,V>` 映射为 `Dictionary<string, string>?`
+- `ref<T>` 映射为 `string?`
+
+当前仍处于开发阶段，生成的 reader 不做历史版本兼容；binaryVersion 不匹配时会直接拒绝读取。schemaHash 当前主要用于非自描述 `.bytes` 的外部 schema 匹配。
