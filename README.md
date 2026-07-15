@@ -225,6 +225,13 @@ var itemTable = await ItemConfigTable.LoadAsync(ReadBytesAsync);
 - `--log-format`：日志格式，支持 `text`、`json`。
 - `--log-file`：可选，指定日志文件路径。
 
+## 开发计划
+
+- 支持更多导出语言。当前 codegen 仅支持 C#，后续可能增加 C、C++、Go、Java 等目标语言。
+- 扩展 Excel 特性支持。当前读取能力覆盖配置导出所需的基础 XLSX XML、sharedStrings 和 inlineStr，后续可继续补充公式、更多单元格类型和样式相关能力。
+- 支持数据加密。为 `.bytes` 产物增加可选加密流程，便于客户端资源分发时保护配置内容。
+- 增强导出代码表达能力。后续可支持枚举、结构体等 schema 定义，并在生成代码中输出更贴近业务模型的类型。
+
 ## 文档
 
 - `docs/format.md`：Excel、`.bytes` 和 `.iotaignore` 规则。
