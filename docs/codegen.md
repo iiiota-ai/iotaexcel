@@ -6,6 +6,8 @@ MVP 阶段代码生成目标语言为 C#。
 iotaexcel codegen --input ./excels --output ./generated --lang csharp
 iotaexcel codegen --input ./excels --output ./generated --lang go
 iotaexcel codegen --input ./excels --output ./generated --lang cpp
+iotaexcel codegen --input ./excels --output ./generated --lang java
+iotaexcel codegen --input ./excels --output ./generated --lang javascript
 ```
 
 ## 命名规则
@@ -197,3 +199,64 @@ C++ type mapping:
 - `bytes` -> `std::vector<std::uint8_t>`
 - `array<T>` -> `std::vector<std::string>`
 - `map<K,V>` -> `std::unordered_map<std::string, std::string>`
+
+## Java codegen
+
+`codegen --lang java` generates one `<ExcelName>.java` file per workbook and one shared `IotaExcelRuntime.java` file. The default Java package is `dataconfig`; use `--package` to override it.
+
+The workbook file contains one public workbook class, for example `Config`, and each sheet is generated as static nested config/table classes:
+
+```java
+Config.ItemConfigTable table = Config.ItemConfigTable.load(data);
+Config.ItemConfig item = table.tryGetByid(1001);
+```
+
+For resource systems that load by file name:
+
+```java
+Config.ItemConfigTable table = Config.ItemConfigTable.loadFrom(readBytes);
+```
+
+`loadFrom` asks `readBytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`.
+
+Java type mapping:
+
+- `bool` -> `boolean`
+- `int`, `int32` -> `int`
+- `int64`, `datetime` -> `long`
+- `float` -> `float`
+- `double` -> `double`
+- `string`, `ref<T>` -> `String`
+- `bytes` -> `byte[]`
+- `array<T>` -> `List<String>`
+- `map<K,V>` -> `Map<String, String>`
+
+## JavaScript codegen
+
+`codegen --lang javascript` generates one `<ExcelName>.config.js` file per workbook and one shared `iotaexcel_runtime.js` file. The output is standard ES Module code and depends only on JavaScript standard APIs such as `Uint8Array`, `DataView`, `TextDecoder`, `Map`, and `BigInt`.
+
+Generated JavaScript APIs follow the same table/key model:
+
+```js
+const table = loadItemConfigTable(data);
+const item = table.tryGetByid(1001);
+```
+
+For asynchronous resource systems that load by file name:
+
+```js
+const table = await loadItemConfigTableFrom(readBytes);
+```
+
+`loadItemConfigTableFrom` asks `readBytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`. `readBytes` must return a `Uint8Array`, so callers can adapt browser `fetch`, Node `fs/promises`, Electron, or engine-specific asset systems without changing generated code.
+
+JavaScript type mapping:
+
+- `bool` -> `boolean`
+- `int`, `int32` -> `number`
+- `int64`, `datetime` -> `bigint`
+- `float`, `double` -> `number`
+- `string`, `ref<T>` -> `string`
+- `bytes` -> `Uint8Array`
+- `array<T>` -> `string[]`
+- `map<K,V>` -> `Map<string, string>`

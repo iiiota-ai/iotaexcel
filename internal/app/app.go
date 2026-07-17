@@ -16,6 +16,8 @@ import (
 	"iotaexcel/internal/codegen/cpp"
 	"iotaexcel/internal/codegen/csharp"
 	"iotaexcel/internal/codegen/golang"
+	"iotaexcel/internal/codegen/java"
+	"iotaexcel/internal/codegen/javascript"
 	"iotaexcel/internal/constants"
 	"iotaexcel/internal/convert"
 	"iotaexcel/internal/decode"
@@ -405,7 +407,7 @@ func validateOptions(command string, opts options) error {
 	if !isOneOf(opts.target, "client", "server", "both") {
 		return fmt.Errorf("unsupported --target %q", opts.target)
 	}
-	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage, constants.CppLanguage) {
+	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage, constants.CppLanguage, constants.JavaLanguage, constants.JavaScriptLanguage) {
 		return fmt.Errorf("unsupported --lang %q", opts.lang)
 	}
 	return nil
@@ -537,6 +539,23 @@ func handleWorkbook(command string, opts options, wb model.Workbook, logger *log
 				Target:    opts.target,
 				Overwrite: opts.overwrite,
 			})
+		case constants.JavaLanguage:
+			pkg := opts.pkg
+			if pkg == constants.DefaultCSharpNamespace {
+				pkg = constants.DefaultJavaPackage
+			}
+			return java.Generate(wb, java.Options{
+				OutputDir: opts.output,
+				Package:   pkg,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
+		case constants.JavaScriptLanguage:
+			return javascript.Generate(wb, javascript.Options{
+				OutputDir: opts.output,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
 		default:
 			return nil, fmt.Errorf("unsupported --lang %q", opts.lang)
 		}
@@ -602,6 +621,8 @@ Usage:
   iotaexcel codegen --input ./excels --output ./generated --lang csharp
   iotaexcel codegen --input ./excels --output ./generated --lang go
   iotaexcel codegen --input ./excels --output ./generated --lang cpp
+  iotaexcel codegen --input ./excels --output ./generated --lang java
+  iotaexcel codegen --input ./excels --output ./generated --lang javascript
   iotaexcel codegen --config ./config.example
 
 Commands:

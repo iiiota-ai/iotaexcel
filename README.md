@@ -1,6 +1,6 @@
 # iotaexcel
 
-`iotaexcel` 是一个跨平台命令行工具，用于把规则化 Excel 配置表转换为 `.bytes` 二进制文件和 C#/Go/C++ 读取代码。
+`iotaexcel` 是一个跨平台命令行工具，用于把规则化 Excel 配置表转换为 `.bytes` 二进制文件和 C#/Go/C++/Java 读取代码。
 
 ## 环境要求
 
@@ -16,7 +16,7 @@
 - 部署依赖少。当前项目没有引入第三方 Go module，核心能力基于标准库和项目内实现完成。
 - 适合命令行批处理。Excel 扫描、格式校验、`.bytes` 编码、代码生成、日志输出都属于偏 I/O 和批处理的任务，Go 的标准库能较好覆盖。
 
-对应取舍是：为了保持独立可执行文件和低依赖，当前 XLSX 读取、`.iotaignore` 解析、protobuf 风格 TLV 编解码和 C#/Go/C++ 代码生成都由项目内代码实现，而不是依赖大型框架或外部运行时。
+对应取舍是：为了保持独立可执行文件和低依赖，当前 XLSX 读取、`.iotaignore` 解析、protobuf 风格 TLV 编解码和 C#/Go/C++/Java 代码生成都由项目内代码实现，而不是依赖大型框架或外部运行时。
 
 ## 与常见序列化方式对比
 
@@ -133,6 +133,8 @@ iotaexcel decode --config ./iotaexcel.decode.conf
 iotaexcel codegen --input ./excels --output ./generated --lang csharp
 iotaexcel codegen --input ./excels --output ./generated --lang go
 iotaexcel codegen --input ./excels --output ./generated --lang cpp
+iotaexcel codegen --input ./excels --output ./generated --lang java
+iotaexcel codegen --input ./excels --output ./generated --lang javascript
 iotaexcel codegen --config ./iotaexcel.codegen.conf
 ```
 
@@ -141,10 +143,10 @@ iotaexcel codegen --config ./iotaexcel.codegen.conf
 - `codegen`：根据 Excel schema 生成读取 `.bytes` 的代码。
 - `--input ./excels`：输入 Excel 文件或目录。
 - `--output ./generated`：生成代码输出目录。
-- `--lang csharp|go|cpp`：目标语言，当前支持 C#、Go 和 C++。
+- `--lang csharp|go|cpp|java|javascript`：目标语言，当前支持 C#、Go、C++、Java 和 JavaScript。
 - `--config ./iotaexcel.codegen.conf`：从 `key=value` 配置文件读取 codegen 参数。
 
-codegen 会为每个 Excel 生成一个业务配置文件，并额外生成共享 runtime 文件。C# 输出 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`；Go 输出 `Excel名.config.go` 和 `iotaexcel_runtime.go`；C++ 输出 `Excel名.config.hpp` 和 `iotaexcel_runtime.hpp`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类型和 `Sheet名ConfigTable` loader，按唯一 key 生成 `TryGetBy<Key字段名>` 安全查询方法。
+codegen 会为每个 Excel 生成一个业务配置文件，并额外生成共享 runtime 文件。C# 输出 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`；Go 输出 `Excel名.config.go` 和 `iotaexcel_runtime.go`；C++ 输出 `Excel名.config.hpp` 和 `iotaexcel_runtime.hpp`；Java 输出 `Excel名.java` 和 `IotaExcelRuntime.java`；JavaScript 输出 `Excel名.config.js` 和 `iotaexcel_runtime.js`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类型和 `Sheet名ConfigTable` loader，按唯一 key 生成 `TryGetBy<Key字段名>` 或对应语言风格的安全查询方法。
 
 默认导出所有 sheet。可以通过 `--sheet` 指定只导出某一个 sheet。
 
@@ -244,6 +246,30 @@ if (itemTable.TryGetByid(1001, item)) {
 }
 ```
 
+Java 示例：
+
+```java
+import dataconfig.Config;
+
+byte[] itemBytes = java.nio.file.Files.readAllBytes(java.nio.file.Path.of("Config_ItemConfig.bytes"));
+Config.ItemConfigTable itemTable = Config.ItemConfigTable.load(itemBytes);
+Config.ItemConfig item = itemTable.tryGetByid(1001);
+if (item != null) {
+    System.out.println(item.name);
+}
+```
+
+JavaScript 示例：
+
+```js
+import { ItemConfigTable } from "./generated/Config.config.js";
+
+const response = await fetch("/Configs/Config_ItemConfig.bytes");
+const itemBytes = new Uint8Array(await response.arrayBuffer());
+const itemTable = ItemConfigTable.load(itemBytes);
+const item = itemTable.tryGetByid(1001);
+```
+
 如果业务资源系统是异步接口，C# 可以使用生成的 `LoadAsync`。`LoadAsync` 会把约定的 `.bytes` 文件名传给 `readBytesAsync`，业务层只需要按文件名从自己的资源系统返回字节：
 
 ```csharp
@@ -286,6 +312,27 @@ auto itemTable = DataConfig::ItemConfigTable::LoadFrom([](const std::string& fil
 });
 ```
 
+Java 生成代码提供同步回调式加载入口：
+
+```java
+Config.ItemConfigTable itemTable = Config.ItemConfigTable.loadFrom(fileName ->
+    java.nio.file.Files.readAllBytes(java.nio.file.Path.of("Configs", fileName))
+);
+```
+
+JavaScript 生成代码提供框架无关的异步回调式加载入口。`readBytes` 只需要按文件名返回 `Uint8Array`，具体来自浏览器 `fetch`、Node `fs/promises`、Electron、小游戏资源系统或引擎资源系统都由业务层决定：
+
+```js
+import { loadItemConfigTableFrom } from "./generated/Config.config.js";
+
+const itemTable = await loadItemConfigTableFrom(async (fileName) => {
+  const response = await fetch(`/Configs/${fileName}`);
+  return new Uint8Array(await response.arrayBuffer());
+});
+
+const item = itemTable.tryGetByid(1001);
+```
+
 生成的 reader 直接按生成时的 schema 解析 `.bytes`，业务层不需要再调用 CLI 的 `decode` 命令，也不需要在运行时读取 Excel。
 
 ## 核心规则
@@ -297,7 +344,7 @@ auto itemTable = DataConfig::ItemConfigTable::LoadFrom([](const std::string& fil
 - 第 4 行：字段注释。
 - 第 5 行及之后：数据行。
 
-每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件可以导出 C#、Go 或 C++ 读取代码。C# 和 C++ 代码默认使用 `DataConfig` 命名空间，Go 代码默认使用 `dataconfig` 包名。
+每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件可以导出 C#、Go、C++ 或 Java 读取代码。C# 和 C++ 代码默认使用 `DataConfig` 命名空间，Go 和 Java 代码默认使用 `dataconfig` 包名。
 
 ## 常用参数
 
@@ -321,12 +368,12 @@ auto itemTable = DataConfig::ItemConfigTable::LoadFrom([](const std::string& fil
 - 扩展 Excel 特性支持。当前读取能力覆盖配置导出所需的基础 XLSX XML、sharedStrings 和 inlineStr，后续可继续补充公式、更多单元格类型和样式相关能力。
 - 支持数据加密。为 `.bytes` 产物增加可选加密流程，便于客户端资源分发时保护配置内容。
 - 增强导出代码表达能力。后续可支持枚举、结构体等 schema 定义，并在生成代码中输出更贴近业务模型的类型。
-- 支持更多导出语言。当前 codegen 支持 C#、Go 和 C++，后续可按需要增加 Java 等目标语言。
+- 支持更多导出语言。当前 codegen 支持 C#、Go、C++、Java 和 JavaScript，后续可按需要增加其他目标语言。
 
 ## 文档
 
 - `docs/format.md`：Excel、`.bytes` 和 `.iotaignore` 规则。
-- `docs/codegen.md`：C#、Go 和 C++ 代码生成规则。
+- `docs/codegen.md`：C#、Go、C++、Java 和 JavaScript 代码生成规则。
 - `docs/logging.md`：日志约定。
 - `docs/excel-cli-plan_dab03005.plan.md`：原始项目 MVP plan 归档。
 - `docs/contributing.md`：提交格式和验证步骤。

@@ -40,10 +40,11 @@ print=false
 # decode --print mode: verbose/concise.
 printMode=verbose
 
-# codegen target language: csharp/go/cpp.
+# codegen target language: csharp/go/cpp/java/javascript.
 lang=csharp
 
-# Generated C# namespace, Go package, or C++ namespace. Defaults: DataConfig for C#/C++, dataconfig for Go.
+# Generated C# namespace, Go/Java package, or C++ namespace. JavaScript ignores this option.
+# Defaults: DataConfig for C#/C++, dataconfig for Go/Java.
 package=DataConfig
 
 # Log level: debug/info/warn/error.

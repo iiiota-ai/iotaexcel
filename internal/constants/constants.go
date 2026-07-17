@@ -14,6 +14,9 @@ const (
 	// DefaultCppNamespace is the default namespace for generated C++ code.
 	DefaultCppNamespace = "DataConfig"
 
+	// DefaultJavaPackage is the default package name for generated Java code.
+	DefaultJavaPackage = "dataconfig"
+
 	// CSharpLanguage is the codegen language identifier for C#.
 	CSharpLanguage = "csharp"
 
@@ -22,6 +25,12 @@ const (
 
 	// CppLanguage is the codegen language identifier for C++.
 	CppLanguage = "cpp"
+
+	// JavaLanguage is the codegen language identifier for Java.
+	JavaLanguage = "java"
+
+	// JavaScriptLanguage is the codegen language identifier for JavaScript.
+	JavaScriptLanguage = "javascript"
 )
 
 const (
@@ -48,6 +57,18 @@ const (
 
 	// GeneratedCppRuntimeFileName is the shared C++ runtime header name.
 	GeneratedCppRuntimeFileName = "iotaexcel_runtime.hpp"
+
+	// GeneratedJavaConfigFileSuffix is the generated Java config file suffix.
+	GeneratedJavaConfigFileSuffix = ".java"
+
+	// GeneratedJavaRuntimeFileName is the shared Java runtime file name.
+	GeneratedJavaRuntimeFileName = "IotaExcelRuntime.java"
+
+	// GeneratedJavaScriptConfigFileSuffix is the generated JavaScript config file suffix.
+	GeneratedJavaScriptConfigFileSuffix = ".config.js"
+
+	// GeneratedJavaScriptRuntimeFileName is the shared JavaScript runtime file name.
+	GeneratedJavaScriptRuntimeFileName = "iotaexcel_runtime.js"
 )
 
 const (

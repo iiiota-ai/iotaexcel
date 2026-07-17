@@ -27,7 +27,7 @@ type Options struct {
 }
 
 // identRE 是文件名、sheet 名、字段名和 ref<T> 目标名共用的标识符规则。
-// 当前采用 C#/Go/C++ 都容易接受的 ASCII 标识符子集，避免生成代码时出现语言相关转义。
+// 当前采用 C#/Go/C++/Java 都容易接受的 ASCII 标识符子集，避免生成代码时出现语言相关转义。
 var identRE = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // ParseWorkbook 校验 Excel 文件级规则，并逐个解析 sheet。

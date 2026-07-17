@@ -23,6 +23,8 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	codeOut := t.TempDir()
 	goCodeOut := t.TempDir()
 	cppCodeOut := t.TempDir()
+	javaCodeOut := t.TempDir()
+	javaScriptCodeOut := t.TempDir()
 	jsonOut := t.TempDir()
 
 	exit := Run([]string{
@@ -284,6 +286,103 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(cppRuntimeContent), "std::uint64_t ReadVarUInt64()") {
 		t.Fatalf("runtime C++ does not contain TLV reader")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", javaCodeOut,
+		"--lang", constants.JavaLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid java codegen exit = %d, want 0", exit)
+	}
+	javaGenerated := assertFile(t, javaCodeOut, "Config"+constants.GeneratedJavaConfigFileSuffix)
+	javaRuntime := assertFile(t, javaCodeOut, constants.GeneratedJavaRuntimeFileName)
+	javaContent, err := os.ReadFile(javaGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	javaRuntimeContent, err := os.ReadFile(javaRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(javaContent), "package "+constants.DefaultJavaPackage) {
+		t.Fatalf("generated Java does not contain default package")
+	}
+	if !strings.Contains(string(javaContent), "public final class Config") {
+		t.Fatalf("generated Java does not contain Config class")
+	}
+	if !strings.Contains(string(javaContent), "public static final class ItemConfig") {
+		t.Fatalf("generated Java does not contain ItemConfig class")
+	}
+	if !strings.Contains(string(javaContent), "public static final class ItemConfigTable") {
+		t.Fatalf("generated Java does not contain ItemConfigTable class")
+	}
+	if !strings.Contains(string(javaContent), "private final Map<Integer, ItemConfig> datas") {
+		t.Fatalf("generated Java does not contain typed datas map")
+	}
+	if !strings.Contains(string(javaContent), "public ItemConfig tryGetByid(int key)") {
+		t.Fatalf("generated Java does not contain tryGetByid method")
+	}
+	if !strings.Contains(string(javaContent), "public static ItemConfigTable load(byte[] data)") {
+		t.Fatalf("generated Java does not contain load")
+	}
+	if !strings.Contains(string(javaContent), `readBytes.read("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated Java loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(javaRuntimeContent), "public long readVarUInt64()") {
+		t.Fatalf("runtime Java does not contain TLV reader")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", javaScriptCodeOut,
+		"--lang", constants.JavaScriptLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid javascript codegen exit = %d, want 0", exit)
+	}
+	javaScriptGenerated := assertFile(t, javaScriptCodeOut, "Config"+constants.GeneratedJavaScriptConfigFileSuffix)
+	javaScriptRuntime := assertFile(t, javaScriptCodeOut, constants.GeneratedJavaScriptRuntimeFileName)
+	javaScriptContent, err := os.ReadFile(javaScriptGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	javaScriptRuntimeContent, err := os.ReadFile(javaScriptRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(javaScriptContent), "export class ItemConfig") {
+		t.Fatalf("generated JavaScript does not contain ItemConfig class")
+	}
+	if !strings.Contains(string(javaScriptContent), "export class ItemConfigTable") {
+		t.Fatalf("generated JavaScript does not contain ItemConfigTable class")
+	}
+	if !strings.Contains(string(javaScriptContent), "this.datas = datas") {
+		t.Fatalf("generated JavaScript does not contain datas field")
+	}
+	if !strings.Contains(string(javaScriptContent), "tryGetByid(key)") {
+		t.Fatalf("generated JavaScript does not contain tryGetByid method")
+	}
+	if !strings.Contains(string(javaScriptContent), "export function loadItemConfigTable(data)") {
+		t.Fatalf("generated JavaScript does not contain loadItemConfigTable")
+	}
+	if !strings.Contains(string(javaScriptContent), `await readBytes("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated JavaScript loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(javaScriptRuntimeContent), "export class IotaBytesReader") {
+		t.Fatalf("runtime JavaScript does not contain TLV reader")
+	}
+	if !strings.Contains(string(javaScriptRuntimeContent), "data instanceof Uint8Array") {
+		t.Fatalf("runtime JavaScript does not require Uint8Array input")
 	}
 }
 

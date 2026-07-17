@@ -56,6 +56,8 @@ docs(format): 补充 ref<Item> 单元格示例
 - `tests/testdata/expected/csharp/`：预期生成的 C# 文件。
 - `tests/testdata/expected/go/`：预期生成的 Go 文件。
 - `tests/testdata/expected/cpp/`：预期生成的 C++ 文件。
+- `tests/testdata/expected/java/`：预期生成的 Java 文件。
+- `tests/testdata/expected/javascript/`：预期生成的 JavaScript 文件。
 
 ## 验证
 
