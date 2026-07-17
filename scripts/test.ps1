@@ -37,9 +37,6 @@ function Invoke-Checked([scriptblock]$Command, [string]$Description) {
 
 try {
   $goExe = Resolve-GoExe
-  $env:GOCACHE = Join-Path $Root ".gocache"
-  New-Item -ItemType Directory -Force -Path $env:GOCACHE | Out-Null
-
   Invoke-Checked { & $goExe test ./... } "go test"
 } finally {
   Pop-Location

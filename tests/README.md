@@ -9,6 +9,7 @@
 - `testdata/expected/json/`：预期 JSON 输出。
 - `testdata/expected/bytes/`：预期 `.bytes` 输出或解码快照。
 - `testdata/expected/csharp/`：预期生成的 C# 文件。
+- `testdata/expected/go/`：预期生成的 Go 文件。
 
 单元测试应放在对应 Go 包旁边。跨包集成测试可以使用该目录作为共享测试数据。
 
@@ -42,7 +43,8 @@ sh scripts/export-test-fixtures.sh
 - 非自描述 `.bytes`：`out/bytes-compact`
 - 非自描述反解析 CSV：`out/decoded-csv-compact`
 - 非自描述反解析 JSON：`out/decoded-json-compact`
-- C#：`out/codegen`
+- C#：`out/codegen/csharp`
+- Go：`out/codegen/go`
 
 如需只验证 `decode` 命令，可运行：
 

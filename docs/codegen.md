@@ -4,6 +4,7 @@ MVP 阶段代码生成目标语言为 C#。
 
 ```bash
 iotaexcel codegen --input ./excels --output ./generated --lang csharp
+iotaexcel codegen --input ./excels --output ./generated --lang go
 ```
 
 ## 命名规则
@@ -131,3 +132,33 @@ var itemTable = await ConfigBootstrap.LoadItemsAsync(ReadBytesAsync);
 - `ref<T>` 映射为 `string?`
 
 当前仍处于开发阶段，生成的 reader 不做历史版本兼容；binaryVersion 不匹配时会直接拒绝读取。schemaHash 当前主要用于非自描述 `.bytes` 的外部 schema 匹配。
+## Go codegen
+
+`codegen --lang go` generates one `<ExcelName>.config.go` file per workbook and one shared `iotaexcel_runtime.go` file. The default Go package is `dataconfig`; use `--package` to override it.
+
+Generated Go APIs follow the same table/key model as C#:
+
+```go
+table, err := LoadItemConfigTable(data)
+item, ok := table.TryGetByid(1001)
+```
+
+For resource systems that load by file name:
+
+```go
+table, err := LoadItemConfigTableFrom(readBytes)
+```
+
+`LoadItemConfigTableFrom` asks `readBytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`.
+
+Go type mapping:
+
+- `bool` -> `bool`
+- `int`, `int32` -> `int32`
+- `int64`, `datetime` -> `int64`
+- `float` -> `float32`
+- `double` -> `float64`
+- `string`, `ref<T>` -> `string`
+- `bytes` -> `[]byte`
+- `array<T>` -> `[]string`
+- `map<K,V>` -> `map[string]string`

@@ -14,5 +14,4 @@ else
 fi
 
 cd "$ROOT"
-mkdir -p .gocache
-GOCACHE="$ROOT/.gocache" "$GO_CMD" test ./...
+"$GO_CMD" test ./...

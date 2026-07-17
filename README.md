@@ -1,6 +1,6 @@
 # iotaexcel
 
-`iotaexcel` 是一个跨平台命令行工具，用于把规则化 Excel 配置表转换为 `.bytes` 二进制文件和 C# 读取代码。
+`iotaexcel` 是一个跨平台命令行工具，用于把规则化 Excel 配置表转换为 `.bytes` 二进制文件和 C#/Go 读取代码。
 
 ## 环境要求
 
@@ -16,7 +16,7 @@
 - 部署依赖少。当前项目没有引入第三方 Go module，核心能力基于标准库和项目内实现完成。
 - 适合命令行批处理。Excel 扫描、格式校验、`.bytes` 编码、代码生成、日志输出都属于偏 I/O 和批处理的任务，Go 的标准库能较好覆盖。
 
-对应取舍是：为了保持独立可执行文件和低依赖，当前 XLSX 读取、`.iotaignore` 解析、protobuf 风格 TLV 编解码和 C# 代码生成都由项目内代码实现，而不是依赖大型框架或外部运行时。
+对应取舍是：为了保持独立可执行文件和低依赖，当前 XLSX 读取、`.iotaignore` 解析、protobuf 风格 TLV 编解码和 C#/Go 代码生成都由项目内代码实现，而不是依赖大型框架或外部运行时。
 
 ## 与常见序列化方式对比
 
@@ -52,7 +52,7 @@ sh scripts/build.sh --all
 
 构建产物输出到 `dist/`，默认使用 `CGO_ENABLED=0`、`-trimpath`、`-ldflags="-s -w"` 生成更小的独立可执行文件。构建脚本会同时生成 `dist/sha256sums.txt`，用于发布后校验下载到的可执行文件是否完整。
 
-构建脚本会把 Go 构建缓存放到项目内的 `.gocache/`，避免本机默认 Go cache 状态影响构建结果。该目录已加入 `.gitignore`。
+构建和测试脚本使用本机 Go 工具链配置的默认全局 build cache，不会覆盖 `GOCACHE`。
 
 ## 验证
 
@@ -73,7 +73,7 @@ sh scripts/check-docs.sh
 sh scripts/test.sh
 ```
 
-`scripts/test.ps1` 会设置 UTF-8 输出，并把 `GOCACHE` 指向项目内 `.gocache/` 后执行 `go test ./...`。如果直接双击运行 PowerShell 脚本，默认会在结束前暂停；设置 `IOTAEXCEL_NO_PAUSE=1` 可用于 CI 或自动化脚本。
+`scripts/test.ps1` 会设置 UTF-8 输出，然后执行 `go test ./...`。如果直接双击运行 PowerShell 脚本，默认会在结束前暂停；设置 `IOTAEXCEL_NO_PAUSE=1` 可用于 CI 或自动化脚本。
 
 GitHub Actions 会在 push 和 pull request 时执行格式检查、文档检查、Go 测试，并运行 `scripts/build.sh --all` 验证多平台发布产物可以正常生成。
 
@@ -127,10 +127,11 @@ iotaexcel decode --config ./iotaexcel.decode.conf
 - `--print-mode concise`：打印简洁模式，只输出字面量和 TLV 数字，便于脚本比对。
 - `--config ./iotaexcel.decode.conf`：从 `key=value` 配置文件读取 decode 参数。
 
-### 生成 C# 读取代码
+### 生成读取代码
 
 ```bash
 iotaexcel codegen --input ./excels --output ./generated --lang csharp
+iotaexcel codegen --input ./excels --output ./generated --lang go
 iotaexcel codegen --config ./iotaexcel.codegen.conf
 ```
 
@@ -139,10 +140,10 @@ iotaexcel codegen --config ./iotaexcel.codegen.conf
 - `codegen`：根据 Excel schema 生成读取 `.bytes` 的代码。
 - `--input ./excels`：输入 Excel 文件或目录。
 - `--output ./generated`：生成代码输出目录。
-- `--lang csharp`：目标语言，当前优先支持 C#。
+- `--lang csharp|go`：目标语言，当前支持 C# 和 Go。
 - `--config ./iotaexcel.codegen.conf`：从 `key=value` 配置文件读取 codegen 参数。
 
-codegen 会为每个 Excel 生成一个 `Excel名.config.cs` 业务配置文件，并额外生成共享 runtime 文件 `IotaExcelRuntime.cs`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类和 `Sheet名ConfigTable` loader 类，按唯一 key 生成 `TryGetBy<Key字段名>` 安全查询方法，并提供 `LoadAsync(Func<string, Task<byte[]>> readBytesAsync)` 异步加载入口。
+codegen 会为每个 Excel 生成一个业务配置文件，并额外生成共享 runtime 文件。C# 输出 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`；Go 输出 `Excel名.config.go` 和 `iotaexcel_runtime.go`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类型和 `Sheet名ConfigTable` loader，按唯一 key 生成 `TryGetBy<Key字段名>` 安全查询方法。
 
 默认导出所有 sheet。可以通过 `--sheet` 指定只导出某一个 sheet。
 
@@ -187,7 +188,9 @@ iotaexcel convert --config ./iotaexcel.convert.conf --output ./out/debug-json --
 
 ### 业务层接入生成代码
 
-业务项目需要同时接入 codegen 输出的 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`，并把 convert 输出的 `.bytes` 文件随项目资源一起分发。运行时读取对应 `.bytes` 字节后，调用生成的 table loader 即可得到按唯一 key 建立索引的数据表。
+业务项目需要同时接入 codegen 输出的业务配置文件和 runtime 文件，并把 convert 输出的 `.bytes` 文件随项目资源一起分发。运行时读取对应 `.bytes` 字节后，调用生成的 table loader 即可得到按唯一 key 建立索引的数据表。
+
+C# 示例：
 
 ```csharp
 using System;
@@ -203,13 +206,55 @@ if (itemTable.TryGetByid(1001, out var item))
 }
 ```
 
-如果业务资源系统是异步接口，可以使用生成的 `LoadAsync`：
+Go 示例：
 
-```csharp
-var itemTable = await ItemConfigTable.LoadAsync(ReadBytesAsync);
+```go
+itemBytes, err := os.ReadFile("Config_ItemConfig.bytes")
+if err != nil {
+    return err
+}
+itemTable, err := dataconfig.LoadItemConfigTable(itemBytes)
+if err != nil {
+    return err
+}
+item, ok := itemTable.TryGetByid(1001)
 ```
 
-生成的 C# reader 直接按生成时的 schema 解析 `.bytes`，业务层不需要再调用 CLI 的 `decode` 命令，也不需要在运行时读取 Excel。
+如果业务资源系统是异步接口，C# 可以使用生成的 `LoadAsync`。`LoadAsync` 会把约定的 `.bytes` 文件名传给 `readBytesAsync`，业务层只需要按文件名从自己的资源系统返回字节：
+
+```csharp
+using System.IO;
+using System.Threading.Tasks;
+using DataConfig;
+
+static Task<byte[]> ReadConfigBytesAsync(string fileName)
+{
+    var path = Path.Combine("Configs", fileName);
+    return File.ReadAllBytesAsync(path);
+}
+
+var itemTable = await ItemConfigTable.LoadAsync(ReadConfigBytesAsync);
+if (itemTable.TryGetByid(1001, out var item))
+{
+    Console.WriteLine(item.name);
+}
+```
+
+Go 生成代码提供同步回调式加载入口，适合接入自定义资源系统：
+
+```go
+readConfigBytes := func(fileName string) ([]byte, error) {
+    return os.ReadFile(filepath.Join("Configs", fileName))
+}
+
+itemTable, err := dataconfig.LoadItemConfigTableFrom(readConfigBytes)
+if err != nil {
+    return err
+}
+item, ok := itemTable.TryGetByid(1001)
+```
+
+生成的 reader 直接按生成时的 schema 解析 `.bytes`，业务层不需要再调用 CLI 的 `decode` 命令，也不需要在运行时读取 Excel。
 
 ## 核心规则
 
@@ -220,7 +265,7 @@ var itemTable = await ItemConfigTable.LoadAsync(ReadBytesAsync);
 - 第 4 行：字段注释。
 - 第 5 行及之后：数据行。
 
-每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件导出一个 C# 代码文件。C# 代码默认使用 `DataConfig` 命名空间。
+每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件可以导出 C# 或 Go 读取代码。C# 代码默认使用 `DataConfig` 命名空间，Go 代码默认使用 `dataconfig` 包名。
 
 ## 常用参数
 
@@ -241,15 +286,15 @@ var itemTable = await ItemConfigTable.LoadAsync(ReadBytesAsync);
 
 ## 开发计划
 
-- 支持更多导出语言。当前 codegen 仅支持 C#，后续可能增加 C、C++、Go、Java 等目标语言。
 - 扩展 Excel 特性支持。当前读取能力覆盖配置导出所需的基础 XLSX XML、sharedStrings 和 inlineStr，后续可继续补充公式、更多单元格类型和样式相关能力。
 - 支持数据加密。为 `.bytes` 产物增加可选加密流程，便于客户端资源分发时保护配置内容。
 - 增强导出代码表达能力。后续可支持枚举、结构体等 schema 定义，并在生成代码中输出更贴近业务模型的类型。
+- 支持更多导出语言。当前 codegen 支持 C# 和 Go，后续可按需要增加 C、C++、Java 等目标语言。
 
 ## 文档
 
 - `docs/format.md`：Excel、`.bytes` 和 `.iotaignore` 规则。
-- `docs/codegen.md`：C# 代码生成规则。
+- `docs/codegen.md`：C# 和 Go 代码生成规则。
 - `docs/logging.md`：日志约定。
 - `docs/excel-cli-plan_dab03005.plan.md`：原始项目 MVP plan 归档。
 - `docs/contributing.md`：提交格式和验证步骤。

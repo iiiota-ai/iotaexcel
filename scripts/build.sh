@@ -47,8 +47,6 @@ write_checksums() {
 
 cd "$ROOT"
 mkdir -p dist
-mkdir -p .gocache
-export GOCACHE="$ROOT/.gocache"
 
 if [ "${1:-}" = "--all" ]; then
   build_target windows amd64

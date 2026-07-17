@@ -21,6 +21,7 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 
 	binOut := t.TempDir()
 	codeOut := t.TempDir()
+	goCodeOut := t.TempDir()
 	jsonOut := t.TempDir()
 
 	exit := Run([]string{
@@ -188,6 +189,53 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if strings.Contains(string(content), "TODO: implement protobuf-style TLV reader") {
 		t.Fatalf("generated C# still contains TLV reader TODO")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", goCodeOut,
+		"--lang", constants.GoLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid go codegen exit = %d, want 0", exit)
+	}
+	goGenerated := assertFile(t, goCodeOut, "Config"+constants.GeneratedGoConfigFileSuffix)
+	goRuntime := assertFile(t, goCodeOut, constants.GeneratedGoRuntimeFileName)
+	goContent, err := os.ReadFile(goGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goRuntimeContent, err := os.ReadFile(goRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(goContent), "package "+constants.DefaultGoPackage) {
+		t.Fatalf("generated Go does not contain default package")
+	}
+	if !strings.Contains(string(goContent), "type ItemConfig struct") {
+		t.Fatalf("generated Go does not contain ItemConfig struct")
+	}
+	if !strings.Contains(string(goContent), "type ItemConfigTable struct") {
+		t.Fatalf("generated Go does not contain ItemConfigTable struct")
+	}
+	if !strings.Contains(string(goContent), "datas map[int32]*ItemConfig") {
+		t.Fatalf("generated Go does not contain typed datas map")
+	}
+	if !strings.Contains(string(goContent), "func (t *ItemConfigTable) TryGetByid(key int32) (*ItemConfig, bool)") {
+		t.Fatalf("generated Go does not contain TryGetByid method")
+	}
+	if !strings.Contains(string(goContent), "func LoadItemConfigTable(data []byte) (*ItemConfigTable, error)") {
+		t.Fatalf("generated Go does not contain LoadItemConfigTable")
+	}
+	if !strings.Contains(string(goContent), `readBytes("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated Go loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(goRuntimeContent), "func (r *iotaBytesReader) readVarUint64()") {
+		t.Fatalf("runtime Go does not contain TLV reader")
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 
 	"iotaexcel/internal/batch"
 	"iotaexcel/internal/codegen/csharp"
+	"iotaexcel/internal/codegen/golang"
 	"iotaexcel/internal/constants"
 	"iotaexcel/internal/convert"
 	"iotaexcel/internal/decode"
@@ -180,7 +181,7 @@ func runCommand(command string, args []string) int {
 }
 
 // parseOptions 解析命令行参数并补齐默认值。
-// 这里会做命令级校验，例如 convert/decode 必须指定 --format，codegen 当前只允许 csharp。
+// 这里会做命令级校验，例如 convert/decode 必须指定 --format，codegen 只允许已支持的目标语言。
 func parseOptions(command string, args []string) (options, error) {
 	preliminary := defaultOptions(command)
 	preliminaryFlags := flag.NewFlagSet(command, flag.ContinueOnError)
@@ -403,8 +404,8 @@ func validateOptions(command string, opts options) error {
 	if !isOneOf(opts.target, "client", "server", "both") {
 		return fmt.Errorf("unsupported --target %q", opts.target)
 	}
-	if command == "codegen" && strings.ToLower(opts.lang) != constants.CSharpLanguage {
-		return fmt.Errorf("MVP only supports --lang %s", constants.CSharpLanguage)
+	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage) {
+		return fmt.Errorf("unsupported --lang %q", opts.lang)
 	}
 	return nil
 }
@@ -502,15 +503,31 @@ func loadDecodeSchemas(opts options, logger *logging.Logger) (map[string][]decod
 }
 
 // handleWorkbook 根据命令类型把一个已通过 schema 校验的 workbook 写出到目标格式。
-// codegen 委托给 C# 生成器；convert 则按 --format 分派到 csv/json/bin 输出器。
+// codegen 委托给目标语言生成器；convert 则按 --format 分派到 csv/json/bin 输出器。
 func handleWorkbook(command string, opts options, wb model.Workbook, logger *logging.Logger) ([]string, error) {
 	if command == "codegen" {
-		return csharp.Generate(wb, csharp.Options{
-			OutputDir: opts.output,
-			Namespace: opts.pkg,
-			Target:    opts.target,
-			Overwrite: opts.overwrite,
-		})
+		switch strings.ToLower(opts.lang) {
+		case constants.CSharpLanguage:
+			return csharp.Generate(wb, csharp.Options{
+				OutputDir: opts.output,
+				Namespace: opts.pkg,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
+		case constants.GoLanguage:
+			pkg := opts.pkg
+			if pkg == constants.DefaultCSharpNamespace {
+				pkg = constants.DefaultGoPackage
+			}
+			return golang.Generate(wb, golang.Options{
+				OutputDir: opts.output,
+				Package:   pkg,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
+		default:
+			return nil, fmt.Errorf("unsupported --lang %q", opts.lang)
+		}
 	}
 
 	switch opts.format {
@@ -571,12 +588,13 @@ Usage:
   iotaexcel decode --input ./out --schema-input ./excels --output ./decoded --format json --self-describing=false
   iotaexcel decode --config ./config.example
   iotaexcel codegen --input ./excels --output ./generated --lang csharp
+  iotaexcel codegen --input ./excels --output ./generated --lang go
   iotaexcel codegen --config ./config.example
 
 Commands:
   convert   export Excel sheets to csv, json, or .bytes
   decode    decode .bytes files to csv or json
-  codegen   generate C# reader code
+  codegen   generate reader code
   version   print tool version
 
 Common options:

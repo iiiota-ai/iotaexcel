@@ -77,8 +77,6 @@ function Write-Checksums {
 
 try {
   $goExe = Resolve-GoExe
-  $env:GOCACHE = Join-Path $Root ".gocache"
-  New-Item -ItemType Directory -Force -Path $env:GOCACHE | Out-Null
   New-Item -ItemType Directory -Force -Path "dist" | Out-Null
 
   if ($All) {

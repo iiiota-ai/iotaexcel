@@ -54,6 +54,7 @@ docs(format): 补充 ref<Item> 单元格示例
 - `tests/testdata/expected/json/`：预期 JSON 输出。
 - `tests/testdata/expected/bytes/`：预期 `.bytes` 输出或 decode 快照。
 - `tests/testdata/expected/csharp/`：预期生成的 C# 文件。
+- `tests/testdata/expected/go/`：预期生成的 Go 文件。
 
 ## 验证
 
