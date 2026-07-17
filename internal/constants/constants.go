@@ -3,7 +3,7 @@ package constants
 
 const (
 	// ToolVersion is the current CLI tool version.
-	ToolVersion = "0.1.0"
+	ToolVersion = "1.0.0"
 
 	// DefaultCSharpNamespace is the default namespace for generated C# code.
 	DefaultCSharpNamespace = "DataConfig"
