@@ -34,6 +34,9 @@ const (
 
 	// PythonLanguage is the codegen language identifier for Python.
 	PythonLanguage = "python"
+
+	// SwiftLanguage is the codegen language identifier for Swift.
+	SwiftLanguage = "swift"
 )
 
 const (
@@ -78,6 +81,12 @@ const (
 
 	// GeneratedPythonRuntimeFileName is the shared Python runtime file name.
 	GeneratedPythonRuntimeFileName = "iotaexcel_runtime.py"
+
+	// GeneratedSwiftConfigFileSuffix is the generated Swift config file suffix.
+	GeneratedSwiftConfigFileSuffix = ".config.swift"
+
+	// GeneratedSwiftRuntimeFileName is the shared Swift runtime file name.
+	GeneratedSwiftRuntimeFileName = "IotaExcelRuntime.swift"
 )
 
 const (

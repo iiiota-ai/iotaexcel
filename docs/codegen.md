@@ -9,6 +9,7 @@ iotaexcel codegen --input ./excels --output ./generated --lang cpp
 iotaexcel codegen --input ./excels --output ./generated --lang java
 iotaexcel codegen --input ./excels --output ./generated --lang javascript
 iotaexcel codegen --input ./excels --output ./generated --lang python
+iotaexcel codegen --input ./excels --output ./generated --lang swift
 ```
 
 ## 命名规则
@@ -290,3 +291,34 @@ Python type mapping:
 - `bytes` -> `bytes`
 - `array<T>` -> `list[str]`
 - `map<K,V>` -> `dict[str, str]`
+
+## Swift codegen
+
+`codegen --lang swift` generates one `<ExcelName>.config.swift` file per workbook and one shared `IotaExcelRuntime.swift` file. The output uses Foundation `Data` and does not depend on UI frameworks.
+
+Generated Swift APIs follow the same table/key model:
+
+```swift
+let table = try loadItemConfigTable(data)
+let item = table.tryGetByid(1001)
+```
+
+For resource systems that load by file name:
+
+```swift
+let table = try ItemConfigTable.loadFrom(readBytes)
+```
+
+`loadFrom` asks `readBytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`.
+
+Swift type mapping:
+
+- `bool` -> `Bool`
+- `int`, `int32` -> `Int32`
+- `int64`, `datetime` -> `Int64`
+- `float` -> `Float`
+- `double` -> `Double`
+- `string`, `ref<T>` -> `String`
+- `bytes` -> `Data`
+- `array<T>` -> `[String]`
+- `map<K,V>` -> `[String: String]`

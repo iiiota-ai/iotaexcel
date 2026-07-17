@@ -26,6 +26,7 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	javaCodeOut := t.TempDir()
 	javaScriptCodeOut := t.TempDir()
 	pythonCodeOut := t.TempDir()
+	swiftCodeOut := t.TempDir()
 	jsonOut := t.TempDir()
 
 	exit := Run([]string{
@@ -434,6 +435,53 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(pythonRuntimeContent), `!= b"IOTB"`) {
 		t.Fatalf("runtime Python does not compare magic as bytes")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", swiftCodeOut,
+		"--lang", constants.SwiftLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid swift codegen exit = %d, want 0", exit)
+	}
+	swiftGenerated := assertFile(t, swiftCodeOut, "Config"+constants.GeneratedSwiftConfigFileSuffix)
+	swiftRuntime := assertFile(t, swiftCodeOut, constants.GeneratedSwiftRuntimeFileName)
+	swiftContent, err := os.ReadFile(swiftGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	swiftRuntimeContent, err := os.ReadFile(swiftRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(swiftContent), "public struct ItemConfig") {
+		t.Fatalf("generated Swift does not contain ItemConfig struct")
+	}
+	if !strings.Contains(string(swiftContent), "public final class ItemConfigTable") {
+		t.Fatalf("generated Swift does not contain ItemConfigTable class")
+	}
+	if !strings.Contains(string(swiftContent), "public let datas: [Int32: ItemConfig]") {
+		t.Fatalf("generated Swift does not contain typed datas dictionary")
+	}
+	if !strings.Contains(string(swiftContent), "public func tryGetByid(_ key: Int32) -> ItemConfig?") {
+		t.Fatalf("generated Swift does not contain tryGetByid method")
+	}
+	if !strings.Contains(string(swiftContent), "public func loadItemConfigTable(_ data: Data) throws -> ItemConfigTable") {
+		t.Fatalf("generated Swift does not contain loadItemConfigTable")
+	}
+	if !strings.Contains(string(swiftContent), `readBytes("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated Swift loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(swiftRuntimeContent), "public struct IotaBytesReader") {
+		t.Fatalf("runtime Swift does not contain TLV reader")
+	}
+	if !strings.Contains(string(swiftRuntimeContent), "public mutating func readVarUInt64() throws -> UInt64") {
+		t.Fatalf("runtime Swift does not contain varint reader")
 	}
 }
 

@@ -14,6 +14,7 @@
 - `testdata/expected/java/`：预期生成的 Java 文件。
 - `testdata/expected/javascript/`：预期生成的 JavaScript 文件。
 - `testdata/expected/python/`：预期生成的 Python 文件。
+- `testdata/expected/swift/`：预期生成的 Swift 文件。
 
 单元测试应放在对应 Go 包旁边。跨包集成测试可以使用该目录作为共享测试数据。
 
@@ -29,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File tests/generate-fixtures.ps1
 sh tests/generate-fixtures.sh
 ```
 
-如需一键重新生成 fixture，导出自描述/非自描述 `.bytes`，反解析 CSV/JSON，并生成 C#、Go、C++、Java、JavaScript 和 Python 代码，可运行：
+如需一键重新生成 fixture，导出自描述/非自描述 `.bytes`，反解析 CSV/JSON，并生成 C#、Go、C++、Java、JavaScript、Python 和 Swift 代码，可运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/export-test-fixtures.ps1
@@ -53,6 +54,7 @@ sh scripts/export-test-fixtures.sh
 - Java：`out/codegen/java`
 - JavaScript：`out/codegen/javascript`
 - Python：`out/codegen/python`
+- Swift：`out/codegen/swift`
 
 如需只验证 `decode` 命令，可运行：
 

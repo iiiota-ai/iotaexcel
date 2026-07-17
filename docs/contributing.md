@@ -59,6 +59,7 @@ docs(format): 补充 ref<Item> 单元格示例
 - `tests/testdata/expected/java/`：预期生成的 Java 文件。
 - `tests/testdata/expected/javascript/`：预期生成的 JavaScript 文件。
 - `tests/testdata/expected/python/`：预期生成的 Python 文件。
+- `tests/testdata/expected/swift/`：预期生成的 Swift 文件。
 
 ## 验证
 

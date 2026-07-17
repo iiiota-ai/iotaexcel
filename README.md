@@ -136,6 +136,7 @@ iotaexcel codegen --input ./excels --output ./generated --lang cpp
 iotaexcel codegen --input ./excels --output ./generated --lang java
 iotaexcel codegen --input ./excels --output ./generated --lang javascript
 iotaexcel codegen --input ./excels --output ./generated --lang python
+iotaexcel codegen --input ./excels --output ./generated --lang swift
 iotaexcel codegen --config ./iotaexcel.codegen.conf
 ```
 
@@ -144,10 +145,10 @@ iotaexcel codegen --config ./iotaexcel.codegen.conf
 - `codegen`：根据 Excel schema 生成读取 `.bytes` 的代码。
 - `--input ./excels`：输入 Excel 文件或目录。
 - `--output ./generated`：生成代码输出目录。
-- `--lang csharp|go|cpp|java|javascript|python`：目标语言，当前支持 C#、Go、C++、Java、JavaScript 和 Python。
+- `--lang csharp|go|cpp|java|javascript|python|swift`：目标语言，当前支持 C#、Go、C++、Java、JavaScript、Python 和 Swift。
 - `--config ./iotaexcel.codegen.conf`：从 `key=value` 配置文件读取 codegen 参数。
 
-codegen 会为每个 Excel 生成一个业务配置文件，并额外生成共享 runtime 文件。C# 输出 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`；Go 输出 `Excel名.config.go` 和 `iotaexcel_runtime.go`；C++ 输出 `Excel名.config.hpp` 和 `iotaexcel_runtime.hpp`；Java 输出 `Excel名.java` 和 `IotaExcelRuntime.java`；JavaScript 输出 `Excel名.config.js` 和 `iotaexcel_runtime.js`；Python 输出 `Excel名_config.py` 和 `iotaexcel_runtime.py`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类型和 `Sheet名ConfigTable` loader，按唯一 key 生成 `TryGetBy<Key字段名>` 或对应语言风格的安全查询方法。
+codegen 会为每个 Excel 生成一个业务配置文件，并额外生成共享 runtime 文件。C# 输出 `Excel名.config.cs` 和 `IotaExcelRuntime.cs`；Go 输出 `Excel名.config.go` 和 `iotaexcel_runtime.go`；C++ 输出 `Excel名.config.hpp` 和 `iotaexcel_runtime.hpp`；Java 输出 `Excel名.java` 和 `IotaExcelRuntime.java`；JavaScript 输出 `Excel名.config.js` 和 `iotaexcel_runtime.js`；Python 输出 `Excel名_config.py` 和 `iotaexcel_runtime.py`；Swift 输出 `Excel名.config.swift` 和 `IotaExcelRuntime.swift`。业务文件中每个 sheet 会生成 `Sheet名Config` 数据类型和 `Sheet名ConfigTable` loader，按唯一 key 生成 `TryGetBy<Key字段名>` 或对应语言风格的安全查询方法。
 
 默认导出所有 sheet。可以通过 `--sheet` 指定只导出某一个 sheet。
 
@@ -283,6 +284,16 @@ item_table = ItemConfigTable.load(item_bytes)
 item = item_table.try_get_by_id(1001)
 ```
 
+Swift 示例：
+
+```swift
+import Foundation
+
+let itemBytes = try Data(contentsOf: URL(fileURLWithPath: "Config_ItemConfig.bytes"))
+let itemTable = try ItemConfigTable.load(itemBytes)
+let item = itemTable.tryGetByid(1001)
+```
+
 如果业务资源系统是异步接口，C# 可以使用生成的 `LoadAsync`。`LoadAsync` 会把约定的 `.bytes` 文件名传给 `readBytesAsync`，业务层只需要按文件名从自己的资源系统返回字节：
 
 ```csharp
@@ -357,6 +368,15 @@ item_table = load_item_config_table_from(
 )
 ```
 
+Swift 生成代码提供同步回调式加载入口：
+
+```swift
+let itemTable = try ItemConfigTable.loadFrom { fileName in
+    let url = URL(fileURLWithPath: "Configs").appendingPathComponent(fileName)
+    return try Data(contentsOf: url)
+}
+```
+
 生成的 reader 直接按生成时的 schema 解析 `.bytes`，业务层不需要再调用 CLI 的 `decode` 命令，也不需要在运行时读取 Excel。
 
 ## 核心规则
@@ -368,7 +388,7 @@ item_table = load_item_config_table_from(
 - 第 4 行：字段注释。
 - 第 5 行及之后：数据行。
 
-每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件可以导出 C#、Go、C++、Java、JavaScript 或 Python 读取代码。C# 和 C++ 代码默认使用 `DataConfig` 命名空间，Go 和 Java 代码默认使用 `dataconfig` 包名。
+每个 sheet 导出一个 `.bytes` 文件。`.bytes` 可通过 `decode` 命令反解析为 CSV 或 JSON。每个 Excel 文件可以导出 C#、Go、C++、Java、JavaScript、Python 或 Swift 读取代码。C# 和 C++ 代码默认使用 `DataConfig` 命名空间，Go 和 Java 代码默认使用 `dataconfig` 包名。
 
 ## 常用参数
 
@@ -392,12 +412,12 @@ item_table = load_item_config_table_from(
 - 扩展 Excel 特性支持。当前读取能力覆盖配置导出所需的基础 XLSX XML、sharedStrings 和 inlineStr，后续可继续补充公式、更多单元格类型和样式相关能力。
 - 支持数据加密。为 `.bytes` 产物增加可选加密流程，便于客户端资源分发时保护配置内容。
 - 增强导出代码表达能力。后续可支持枚举、结构体等 schema 定义，并在生成代码中输出更贴近业务模型的类型。
-- 支持更多导出语言。当前 codegen 支持 C#、Go、C++、Java 和 JavaScript，后续可按需要增加其他目标语言。
+- 支持更多导出语言。当前 codegen 支持 C#、Go、C++、Java、JavaScript、Python 和 Swift，后续可按需要增加其他目标语言。
 
 ## 文档
 
 - `docs/format.md`：Excel、`.bytes` 和 `.iotaignore` 规则。
-- `docs/codegen.md`：C#、Go、C++、Java 和 JavaScript 代码生成规则。
+- `docs/codegen.md`：C#、Go、C++、Java、JavaScript、Python 和 Swift 代码生成规则。
 - `docs/logging.md`：日志约定。
 - `docs/excel-cli-plan_dab03005.plan.md`：原始项目 MVP plan 归档。
 - `docs/contributing.md`：提交格式和验证步骤。
