@@ -40,7 +40,7 @@ print=false
 # decode --print mode: verbose/concise.
 printMode=verbose
 
-# codegen target language: csharp/go/cpp/java/javascript.
+# codegen target language: csharp/go/cpp/java/javascript/python.
 lang=csharp
 
 # Generated C# namespace, Go/Java package, or C++ namespace. JavaScript ignores this option.

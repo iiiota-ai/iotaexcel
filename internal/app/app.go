@@ -18,6 +18,7 @@ import (
 	"iotaexcel/internal/codegen/golang"
 	"iotaexcel/internal/codegen/java"
 	"iotaexcel/internal/codegen/javascript"
+	"iotaexcel/internal/codegen/python"
 	"iotaexcel/internal/constants"
 	"iotaexcel/internal/convert"
 	"iotaexcel/internal/decode"
@@ -407,7 +408,7 @@ func validateOptions(command string, opts options) error {
 	if !isOneOf(opts.target, "client", "server", "both") {
 		return fmt.Errorf("unsupported --target %q", opts.target)
 	}
-	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage, constants.CppLanguage, constants.JavaLanguage, constants.JavaScriptLanguage) {
+	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage, constants.CppLanguage, constants.JavaLanguage, constants.JavaScriptLanguage, constants.PythonLanguage) {
 		return fmt.Errorf("unsupported --lang %q", opts.lang)
 	}
 	return nil
@@ -556,6 +557,12 @@ func handleWorkbook(command string, opts options, wb model.Workbook, logger *log
 				Target:    opts.target,
 				Overwrite: opts.overwrite,
 			})
+		case constants.PythonLanguage:
+			return python.Generate(wb, python.Options{
+				OutputDir: opts.output,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
 		default:
 			return nil, fmt.Errorf("unsupported --lang %q", opts.lang)
 		}
@@ -623,6 +630,7 @@ Usage:
   iotaexcel codegen --input ./excels --output ./generated --lang cpp
   iotaexcel codegen --input ./excels --output ./generated --lang java
   iotaexcel codegen --input ./excels --output ./generated --lang javascript
+  iotaexcel codegen --input ./excels --output ./generated --lang python
   iotaexcel codegen --config ./config.example
 
 Commands:

@@ -25,6 +25,7 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	cppCodeOut := t.TempDir()
 	javaCodeOut := t.TempDir()
 	javaScriptCodeOut := t.TempDir()
+	pythonCodeOut := t.TempDir()
 	jsonOut := t.TempDir()
 
 	exit := Run([]string{
@@ -383,6 +384,56 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(javaScriptRuntimeContent), "data instanceof Uint8Array") {
 		t.Fatalf("runtime JavaScript does not require Uint8Array input")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", pythonCodeOut,
+		"--lang", constants.PythonLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid python codegen exit = %d, want 0", exit)
+	}
+	pythonGenerated := assertFile(t, pythonCodeOut, "Config"+constants.GeneratedPythonConfigFileSuffix)
+	pythonRuntime := assertFile(t, pythonCodeOut, constants.GeneratedPythonRuntimeFileName)
+	pythonContent, err := os.ReadFile(pythonGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pythonRuntimeContent, err := os.ReadFile(pythonRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pythonContent), "class ItemConfig:") {
+		t.Fatalf("generated Python does not contain ItemConfig class")
+	}
+	if !strings.Contains(string(pythonContent), "class ItemConfigTable:") {
+		t.Fatalf("generated Python does not contain ItemConfigTable class")
+	}
+	if !strings.Contains(string(pythonContent), "self.datas = datas") {
+		t.Fatalf("generated Python does not contain datas field")
+	}
+	if !strings.Contains(string(pythonContent), "def try_get_by_id(self, key: int) -> ItemConfig | None:") {
+		t.Fatalf("generated Python does not contain try_get_by_id method")
+	}
+	if !strings.Contains(string(pythonContent), "def load_item_config_table(data: bytes | bytearray | memoryview) -> ItemConfigTable:") {
+		t.Fatalf("generated Python does not contain load_item_config_table")
+	}
+	if !strings.Contains(string(pythonContent), `read_bytes("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated Python loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(pythonRuntimeContent), "class IotaBytesReader:") {
+		t.Fatalf("runtime Python does not contain TLV reader")
+	}
+	if !strings.Contains(string(pythonRuntimeContent), "def read_var_uint64(self) -> int:") {
+		t.Fatalf("runtime Python does not contain varint reader")
+	}
+	if !strings.Contains(string(pythonRuntimeContent), `!= b"IOTB"`) {
+		t.Fatalf("runtime Python does not compare magic as bytes")
 	}
 }
 

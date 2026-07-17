@@ -52,45 +52,48 @@ try {
   }
 
   # fixture 可能被修改或删除，导出前先重建，保证验证输入可重复。
-  Write-Host "[1/12] Generate Excel fixtures"
+  Write-Host "[1/13] Generate Excel fixtures"
   Invoke-ChildNoPause { powershell -NoProfile -ExecutionPolicy Bypass -File "tests/generate-fixtures.ps1" } "Generate Excel fixtures"
 
   # 只导出 valid 目录，避免 invalid fixture 按预期失败导致脚本中断。
-  Write-Host "[2/12] Export self-describing .bytes files"
+  Write-Host "[2/13] Export self-describing .bytes files"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel convert --input tests/testdata/excels/valid --output out/bytes --format bin --check-ref --overwrite --log-level info } "Export .bytes files"
 
   # 反解析 .bytes，验证当前 CLI 可以不依赖 Excel 源文件恢复可读数据。
-  Write-Host "[3/12] Decode self-describing .bytes files to JSON"
+  Write-Host "[3/13] Decode self-describing .bytes files to JSON"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel decode --input out/bytes --output out/decoded-json --format json --overwrite --log-level info } "Decode .bytes files to JSON"
 
-  Write-Host "[4/12] Decode self-describing .bytes files to CSV"
+  Write-Host "[4/13] Decode self-describing .bytes files to CSV"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel decode --input out/bytes --output out/decoded-csv --format csv --overwrite --log-level info } "Decode .bytes files to CSV"
 
   # 非自描述 .bytes 不写字段名和类型名，decode 时必须通过 --schema-input 提供 Excel schema。
-  Write-Host "[5/12] Export non-self-describing .bytes files"
+  Write-Host "[5/13] Export non-self-describing .bytes files"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel convert --input tests/testdata/excels/valid --output out/bytes-compact --format bin --self-describing=false --check-ref --overwrite --log-level info } "Export non-self-describing .bytes files"
 
-  Write-Host "[6/12] Decode non-self-describing .bytes files to JSON"
+  Write-Host "[6/13] Decode non-self-describing .bytes files to JSON"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel decode --input out/bytes-compact --schema-input tests/testdata/excels/valid --output out/decoded-json-compact --format json --self-describing=false --overwrite --log-level info } "Decode non-self-describing .bytes files to JSON"
 
-  Write-Host "[7/12] Decode non-self-describing .bytes files to CSV"
+  Write-Host "[7/13] Decode non-self-describing .bytes files to CSV"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel decode --input out/bytes-compact --schema-input tests/testdata/excels/valid --output out/decoded-csv-compact --format csv --self-describing=false --overwrite --log-level info } "Decode non-self-describing .bytes files to CSV"
 
   # C# 输出用于验证 codegen 可以基于相同 Excel schema 生成读取代码。
-  Write-Host "[8/12] Generate C# code"
+  Write-Host "[8/13] Generate C# code"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/csharp --lang csharp --check-ref --overwrite --log-level info } "Generate C# code"
 
-  Write-Host "[9/12] Generate Go code"
+  Write-Host "[9/13] Generate Go code"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/go --lang go --check-ref --overwrite --log-level info } "Generate Go code"
 
-  Write-Host "[10/12] Generate C++ code"
+  Write-Host "[10/13] Generate C++ code"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/cpp --lang cpp --check-ref --overwrite --log-level info } "Generate C++ code"
 
-  Write-Host "[11/12] Generate Java code"
+  Write-Host "[11/13] Generate Java code"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/java --lang java --check-ref --overwrite --log-level info } "Generate Java code"
 
-  Write-Host "[12/12] Generate JavaScript code"
+  Write-Host "[12/13] Generate JavaScript code"
   Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/javascript --lang javascript --check-ref --overwrite --log-level info } "Generate JavaScript code"
+
+  Write-Host "[13/13] Generate Python code"
+  Invoke-Checked { & $goExe run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/python --lang python --check-ref --overwrite --log-level info } "Generate Python code"
 
   Write-Host "Done."
   Write-Host "Self-describing .bytes output: out/bytes"
@@ -104,6 +107,7 @@ try {
   Write-Host "C++ output: out/codegen/cpp"
   Write-Host "Java output: out/codegen/java"
   Write-Host "JavaScript output: out/codegen/javascript"
+  Write-Host "Python output: out/codegen/python"
 } finally {
   Pop-Location
   Wait-BeforeExit

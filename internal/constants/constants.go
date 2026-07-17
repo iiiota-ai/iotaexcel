@@ -31,6 +31,9 @@ const (
 
 	// JavaScriptLanguage is the codegen language identifier for JavaScript.
 	JavaScriptLanguage = "javascript"
+
+	// PythonLanguage is the codegen language identifier for Python.
+	PythonLanguage = "python"
 )
 
 const (
@@ -69,6 +72,12 @@ const (
 
 	// GeneratedJavaScriptRuntimeFileName is the shared JavaScript runtime file name.
 	GeneratedJavaScriptRuntimeFileName = "iotaexcel_runtime.js"
+
+	// GeneratedPythonConfigFileSuffix is the generated Python config file suffix.
+	GeneratedPythonConfigFileSuffix = "_config.py"
+
+	// GeneratedPythonRuntimeFileName is the shared Python runtime file name.
+	GeneratedPythonRuntimeFileName = "iotaexcel_runtime.py"
 )
 
 const (

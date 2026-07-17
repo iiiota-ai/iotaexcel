@@ -20,43 +20,46 @@ fi
 cd "$ROOT"
 
 # 先重建 fixture，保证后续 convert/codegen 的输入稳定可重复。
-echo "[1/12] Generate Excel fixtures"
+echo "[1/13] Generate Excel fixtures"
 sh tests/generate-fixtures.sh
 
 # 只处理 valid 目录，invalid fixture 是给失败测试使用的，不应进入一键导出流程。
-echo "[2/12] Export self-describing .bytes files"
+echo "[2/13] Export self-describing .bytes files"
 "$GO_CMD" run ./cmd/iotaexcel convert --input tests/testdata/excels/valid --output out/bytes --format bin --check-ref --overwrite --log-level info
 
-echo "[3/12] Decode self-describing .bytes files to JSON"
+echo "[3/13] Decode self-describing .bytes files to JSON"
 "$GO_CMD" run ./cmd/iotaexcel decode --input out/bytes --output out/decoded-json --format json --overwrite --log-level info
 
-echo "[4/12] Decode self-describing .bytes files to CSV"
+echo "[4/13] Decode self-describing .bytes files to CSV"
 "$GO_CMD" run ./cmd/iotaexcel decode --input out/bytes --output out/decoded-csv --format csv --overwrite --log-level info
 
-echo "[5/12] Export non-self-describing .bytes files"
+echo "[5/13] Export non-self-describing .bytes files"
 "$GO_CMD" run ./cmd/iotaexcel convert --input tests/testdata/excels/valid --output out/bytes-compact --format bin --self-describing=false --check-ref --overwrite --log-level info
 
-echo "[6/12] Decode non-self-describing .bytes files to JSON"
+echo "[6/13] Decode non-self-describing .bytes files to JSON"
 "$GO_CMD" run ./cmd/iotaexcel decode --input out/bytes-compact --schema-input tests/testdata/excels/valid --output out/decoded-json-compact --format json --self-describing=false --overwrite --log-level info
 
-echo "[7/12] Decode non-self-describing .bytes files to CSV"
+echo "[7/13] Decode non-self-describing .bytes files to CSV"
 "$GO_CMD" run ./cmd/iotaexcel decode --input out/bytes-compact --schema-input tests/testdata/excels/valid --output out/decoded-csv-compact --format csv --self-describing=false --overwrite --log-level info
 
 # 使用相同输入生成 reader，输出到 out/codegen 供人工检查或后续编译验证使用。
-echo "[8/12] Generate C# code"
+echo "[8/13] Generate C# code"
 "$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/csharp --lang csharp --check-ref --overwrite --log-level info
 
-echo "[9/12] Generate Go code"
+echo "[9/13] Generate Go code"
 "$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/go --lang go --check-ref --overwrite --log-level info
 
-echo "[10/12] Generate C++ code"
+echo "[10/13] Generate C++ code"
 "$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/cpp --lang cpp --check-ref --overwrite --log-level info
 
-echo "[11/12] Generate Java code"
+echo "[11/13] Generate Java code"
 "$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/java --lang java --check-ref --overwrite --log-level info
 
-echo "[12/12] Generate JavaScript code"
+echo "[12/13] Generate JavaScript code"
 "$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/javascript --lang javascript --check-ref --overwrite --log-level info
+
+echo "[13/13] Generate Python code"
+"$GO_CMD" run ./cmd/iotaexcel codegen --input tests/testdata/excels/valid --output out/codegen/python --lang python --check-ref --overwrite --log-level info
 
 echo "Done."
 echo "Self-describing .bytes output: out/bytes"
@@ -70,3 +73,4 @@ echo "Go output: out/codegen/go"
 echo "C++ output: out/codegen/cpp"
 echo "Java output: out/codegen/java"
 echo "JavaScript output: out/codegen/javascript"
+echo "Python output: out/codegen/python"

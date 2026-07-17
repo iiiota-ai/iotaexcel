@@ -8,6 +8,7 @@ iotaexcel codegen --input ./excels --output ./generated --lang go
 iotaexcel codegen --input ./excels --output ./generated --lang cpp
 iotaexcel codegen --input ./excels --output ./generated --lang java
 iotaexcel codegen --input ./excels --output ./generated --lang javascript
+iotaexcel codegen --input ./excels --output ./generated --lang python
 ```
 
 ## 命名规则
@@ -260,3 +261,32 @@ JavaScript type mapping:
 - `bytes` -> `Uint8Array`
 - `array<T>` -> `string[]`
 - `map<K,V>` -> `Map<string, string>`
+
+## Python codegen
+
+`codegen --lang python` generates one `<ExcelName>_config.py` file per workbook and one shared `iotaexcel_runtime.py` file. The output uses only Python standard library modules.
+
+Generated Python APIs follow the same table/key model:
+
+```python
+table = load_item_config_table(data)
+item = table.try_get_by_id(1001)
+```
+
+For resource systems that load by file name:
+
+```python
+table = load_item_config_table_from(read_bytes)
+```
+
+`load_item_config_table_from` asks `read_bytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`. `read_bytes` may return `bytes`, `bytearray`, or `memoryview`.
+
+Python type mapping:
+
+- `bool` -> `bool`
+- `int`, `int32`, `int64`, `datetime` -> `int`
+- `float`, `double` -> `float`
+- `string`, `ref<T>` -> `str`
+- `bytes` -> `bytes`
+- `array<T>` -> `list[str]`
+- `map<K,V>` -> `dict[str, str]`
