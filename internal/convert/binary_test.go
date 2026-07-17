@@ -58,36 +58,36 @@ func TestWriteBinaryEncodesTLVRows(t *testing.T) {
 	if decoded.rowCount != 2 {
 		t.Fatalf("rowCount = %d, want 2", decoded.rowCount)
 	}
-	if _, ok := decoded.fields[11]; ok {
-		t.Fatalf("comment fieldNo 11 should not be encoded")
+	if _, ok := decoded.fields[12]; ok {
+		t.Fatalf("comment fieldNo 12 should not be encoded")
 	}
 
 	first := decoded.rows[0]
 	if got := first.varints[1]; got != 2002 { // ZigZag(1001)
 		t.Fatalf("id raw varint = %d, want 2002", got)
 	}
-	if got := unzigzag(first.varints[4]); got != -12 {
+	if got := unzigzag(first.varints[5]); got != -12 {
 		t.Fatalf("score = %d, want -12", got)
 	}
-	if got := unzigzag(first.varints[5]); got != -900719925474 {
+	if got := unzigzag(first.varints[6]); got != -900719925474 {
 		t.Fatalf("big = %d, want -900719925474", got)
 	}
 	if got := first.strings[2]; got != "Sword" {
 		t.Fatalf("name = %q, want Sword", got)
 	}
-	if got, want := unzigzag(first.varints[8]), fixtureUnix(t, "2026-07-10 18:47:00"); got != want {
+	if got, want := unzigzag(first.varints[9]), fixtureUnix(t, "2026-07-10 18:47:00"); got != want {
 		t.Fatalf("createdAt = %d, want %d", got, want)
 	}
-	if got := first.strings[9]; got != "weapon|rare" {
+	if got := first.strings[10]; got != "weapon|rare" {
 		t.Fatalf("array encoding = %q, want weapon|rare", got)
 	}
-	if got := first.strings[10]; got != "atk:10|level:2" {
+	if got := first.strings[11]; got != "atk:10|level:2" {
 		t.Fatalf("map encoding = %q, want atk:10|level:2", got)
 	}
-	if got := math.Float32frombits(uint32(first.fixed32[6])); got != float32(1.5) {
+	if got := math.Float32frombits(uint32(first.fixed32[7])); got != float32(1.5) {
 		t.Fatalf("ratio = %v, want 1.5", got)
 	}
-	if got := math.Float64frombits(first.fixed64[7]); got != 3.14159 {
+	if got := math.Float64frombits(first.fixed64[8]); got != 3.14159 {
 		t.Fatalf("price = %v, want 3.14159", got)
 	}
 }

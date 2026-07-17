@@ -71,6 +71,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	key := keyField(sheet)
 	keyTypeName := swiftType(key.Type)
 	keyMethodSuffix := keyMethodName(sheet)
+	uniqueFields := uniqueIndexFields(sheet, target)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 
 	b.WriteString("public struct " + typeName + " {\n")
@@ -89,12 +90,30 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 
 	b.WriteString("public final class " + tableName + " {\n")
 	b.WriteString("    public let datas: [" + keyTypeName + ": " + typeName + "]\n\n")
-	b.WriteString("    public init(datas: [" + keyTypeName + ": " + typeName + "]) {\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    private let " + uniqueIndexName(field) + ": [" + swiftType(field.Type) + ": " + typeName + "]\n")
+	}
+	if len(uniqueFields) > 0 {
+		b.WriteString("\n")
+	}
+	b.WriteString("    public init(datas: [" + keyTypeName + ": " + typeName + "]")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field) + ": [" + swiftType(field.Type) + ": " + typeName + "]")
+	}
+	b.WriteString(") {\n")
 	b.WriteString("        self.datas = datas\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        self." + uniqueIndexName(field) + " = " + uniqueIndexName(field) + "\n")
+	}
 	b.WriteString("    }\n\n")
 	b.WriteString("    public func tryGetBy" + keyMethodSuffix + "(_ key: " + keyTypeName + ") -> " + typeName + "? {\n")
 	b.WriteString("        return datas[key]\n")
 	b.WriteString("    }\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    public func tryGetBy" + field.Name + "(_ key: " + swiftType(field.Type) + ") -> " + typeName + "? {\n")
+		b.WriteString("        return " + uniqueIndexName(field) + "[key]\n")
+		b.WriteString("    }\n\n")
+	}
 	b.WriteString("    public static func load(_ data: Data) throws -> " + tableName + " {\n")
 	b.WriteString("        return try load" + tableName + "(data)\n")
 	b.WriteString("    }\n\n")
@@ -124,6 +143,10 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("    let rowCount = try reader.readVarUInt64()\n")
 	b.WriteString("    var rows: [" + keyTypeName + ": " + typeName + "] = [:]\n")
 	b.WriteString("    rows.reserveCapacity(Int(rowCount))\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    var " + uniqueIndexName(field) + ": [" + swiftType(field.Type) + ": " + typeName + "] = [:]\n")
+		b.WriteString("    " + uniqueIndexName(field) + ".reserveCapacity(Int(rowCount))\n")
+	}
 	b.WriteString("    for _ in 0..<rowCount {\n")
 	b.WriteString("        var rowReader = IotaBytesReader(data: try reader.readBytes())\n")
 	b.WriteString("        var row = " + typeName + "()\n")
@@ -144,8 +167,21 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            }\n")
 	b.WriteString("        }\n")
 	b.WriteString("        rows[row." + keyName(sheet) + "] = row\n")
+	for _, field := range uniqueFields {
+		if cond := swiftUniqueIndexCondition(field); cond != "" {
+			b.WriteString("        if " + cond + " {\n")
+			b.WriteString("            " + uniqueIndexName(field) + "[row." + field.Name + "] = row\n")
+			b.WriteString("        }\n")
+		} else {
+			b.WriteString("        " + uniqueIndexName(field) + "[row." + field.Name + "] = row\n")
+		}
+	}
 	b.WriteString("    }\n")
-	b.WriteString("    return " + tableName + "(datas: rows)\n")
+	b.WriteString("    return " + tableName + "(datas: rows")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field) + ": " + uniqueIndexName(field))
+	}
+	b.WriteString(")\n")
 	b.WriteString("}\n\n")
 	b.WriteString("public func load" + tableName + "From(_ readBytes: (String) throws -> Data) throws -> " + tableName + " {\n")
 	b.WriteString("    return try load" + tableName + "(readBytes(\"" + bytesFileName + "\"))\n")
@@ -375,6 +411,27 @@ func keyMethodName(sheet model.Sheet) string {
 		return "Key"
 	}
 	return name
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "Index"
+}
+
+func swiftUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "!row." + field.Name + ".isEmpty"
+	}
+	return ""
 }
 
 func sanitizeComment(comment string) string {

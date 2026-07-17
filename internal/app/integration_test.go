@@ -177,6 +177,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	if !strings.Contains(string(content), "public bool TryGetByid(int key, out ItemConfig value)") {
 		t.Fatalf("generated C# does not contain TryGetByid method")
 	}
+	if !strings.Contains(string(content), "public bool TryGetByname(string key, out ItemConfig value)") {
+		t.Fatalf("generated C# does not contain TryGetByname method")
+	}
+	if !strings.Contains(string(content), "public bool TryGetByclientOnly(string key, out ItemConfig value)") {
+		t.Fatalf("generated C# does not contain TryGetByclientOnly method")
+	}
 	if !strings.Contains(string(content), "using System.Threading.Tasks;") {
 		t.Fatalf("generated C# does not import Tasks namespace")
 	}
@@ -233,6 +239,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	if !strings.Contains(string(goContent), "func (t *ItemConfigTable) TryGetByid(key int32) (*ItemConfig, bool)") {
 		t.Fatalf("generated Go does not contain TryGetByid method")
 	}
+	if !strings.Contains(string(goContent), "func (t *ItemConfigTable) TryGetByname(key string) (*ItemConfig, bool)") {
+		t.Fatalf("generated Go does not contain TryGetByname method")
+	}
+	if !strings.Contains(string(goContent), "func (t *ItemConfigTable) TryGetByclientOnly(key string) (*ItemConfig, bool)") {
+		t.Fatalf("generated Go does not contain TryGetByclientOnly method")
+	}
 	if !strings.Contains(string(goContent), "func LoadItemConfigTable(data []byte) (*ItemConfigTable, error)") {
 		t.Fatalf("generated Go does not contain LoadItemConfigTable")
 	}
@@ -279,6 +291,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(cppContent), "bool TryGetByid(const KeyType& key, const ItemConfig*& value) const") {
 		t.Fatalf("generated C++ does not contain TryGetByid method")
+	}
+	if !strings.Contains(string(cppContent), "bool TryGetByname(const std::string& key, const ItemConfig*& value) const") {
+		t.Fatalf("generated C++ does not contain TryGetByname method")
+	}
+	if !strings.Contains(string(cppContent), "bool TryGetByclientOnly(const std::string& key, const ItemConfig*& value) const") {
+		t.Fatalf("generated C++ does not contain TryGetByclientOnly method")
 	}
 	if !strings.Contains(string(cppContent), "static ItemConfigTable Load(const std::vector<std::uint8_t>& data)") {
 		t.Fatalf("generated C++ does not contain Load")
@@ -330,6 +348,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	if !strings.Contains(string(javaContent), "public ItemConfig tryGetByid(int key)") {
 		t.Fatalf("generated Java does not contain tryGetByid method")
 	}
+	if !strings.Contains(string(javaContent), "public ItemConfig tryGetByname(String key)") {
+		t.Fatalf("generated Java does not contain tryGetByname method")
+	}
+	if !strings.Contains(string(javaContent), "public ItemConfig tryGetByclientOnly(String key)") {
+		t.Fatalf("generated Java does not contain tryGetByclientOnly method")
+	}
 	if !strings.Contains(string(javaContent), "public static ItemConfigTable load(byte[] data)") {
 		t.Fatalf("generated Java does not contain load")
 	}
@@ -373,6 +397,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(javaScriptContent), "tryGetByid(key)") {
 		t.Fatalf("generated JavaScript does not contain tryGetByid method")
+	}
+	if !strings.Contains(string(javaScriptContent), "tryGetByname(key)") {
+		t.Fatalf("generated JavaScript does not contain tryGetByname method")
+	}
+	if !strings.Contains(string(javaScriptContent), "tryGetByclientOnly(key)") {
+		t.Fatalf("generated JavaScript does not contain tryGetByclientOnly method")
 	}
 	if !strings.Contains(string(javaScriptContent), "export function loadItemConfigTable(data)") {
 		t.Fatalf("generated JavaScript does not contain loadItemConfigTable")
@@ -420,6 +450,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(pythonContent), "def try_get_by_id(self, key: int) -> ItemConfig | None:") {
 		t.Fatalf("generated Python does not contain try_get_by_id method")
+	}
+	if !strings.Contains(string(pythonContent), "def try_get_by_name(self, key: str) -> ItemConfig | None:") {
+		t.Fatalf("generated Python does not contain try_get_by_name method")
+	}
+	if !strings.Contains(string(pythonContent), "def try_get_by_client_only(self, key: str) -> ItemConfig | None:") {
+		t.Fatalf("generated Python does not contain try_get_by_client_only method")
 	}
 	if !strings.Contains(string(pythonContent), "def load_item_config_table(data: bytes | bytearray | memoryview) -> ItemConfigTable:") {
 		t.Fatalf("generated Python does not contain load_item_config_table")
@@ -470,6 +506,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(swiftContent), "public func tryGetByid(_ key: Int32) -> ItemConfig?") {
 		t.Fatalf("generated Swift does not contain tryGetByid method")
+	}
+	if !strings.Contains(string(swiftContent), "public func tryGetByname(_ key: String) -> ItemConfig?") {
+		t.Fatalf("generated Swift does not contain tryGetByname method")
+	}
+	if !strings.Contains(string(swiftContent), "public func tryGetByclientOnly(_ key: String) -> ItemConfig?") {
+		t.Fatalf("generated Swift does not contain tryGetByclientOnly method")
 	}
 	if !strings.Contains(string(swiftContent), "public func loadItemConfigTable(_ data: Data) throws -> ItemConfigTable") {
 		t.Fatalf("generated Swift does not contain loadItemConfigTable")

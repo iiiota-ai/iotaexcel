@@ -63,6 +63,8 @@ type Field struct {
 	Usage       Usage    `json:"usage"`
 	Comment     string   `json:"comment"`
 	IsKey       bool     `json:"key"`
+	Required    bool     `json:"required"`
+	Unique      bool     `json:"unique"`
 	ColumnIndex int      `json:"columnIndex"`
 	FieldNo     uint64   `json:"fieldNo"`
 	WireType    uint64   `json:"wireType"`

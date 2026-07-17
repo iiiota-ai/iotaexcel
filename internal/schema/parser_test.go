@@ -74,13 +74,13 @@ func TestParseWorkbookBuildsSchemaAndRows(t *testing.T) {
 		Sheets: []model.RawSheet{{
 			Name: "Item",
 			Rows: [][]string{
-				{"*id", "name", "score", "note"},
-				{"int", "string", "int", "string"},
-				{"all", "client", "server", "comment"},
-				{"ID", "Name", "Score", "Note"},
-				{"1", "Sword", "-12", "local note"},
-				{"", "", "", ""},
-				{"2", "Shield", "bad", "ignored note"},
+				{"id#", "name*", "code!", "score", "note"},
+				{"int", "string", "string", "int", "string"},
+				{"all", "client", "all", "server", "comment"},
+				{"ID", "Name", "Code", "Score", "Note"},
+				{"1", "Sword", "sword", "-12", "local note"},
+				{"", "", "", "", ""},
+				{"2", "Shield", "", "bad", "ignored note"},
 			},
 		}},
 	}
@@ -90,13 +90,13 @@ func TestParseWorkbookBuildsSchemaAndRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	sheet := wb.Sheets[0]
-	if len(sheet.Fields) != 4 || !sheet.Fields[0].IsKey || sheet.Fields[3].Binary {
+	if len(sheet.Fields) != 5 || !sheet.Fields[0].IsKey || !sheet.Fields[0].Required || !sheet.Fields[0].Unique || !sheet.Fields[1].Required || !sheet.Fields[2].Unique || sheet.Fields[4].Binary {
 		t.Fatalf("fields = %#v", sheet.Fields)
 	}
 	if len(sheet.Rows) != 2 || sheet.SkippedEmptyRows[0] != 6 {
 		t.Fatalf("rows/skipped = %#v/%#v", sheet.Rows, sheet.SkippedEmptyRows)
 	}
-	if sheet.DefaultValueCount != 1 || len(sheet.ConversionErrors) != 1 {
+	if sheet.DefaultValueCount != 2 || len(sheet.ConversionErrors) != 1 {
 		t.Fatalf("defaults/errors = %d/%#v", sheet.DefaultValueCount, sheet.ConversionErrors)
 	}
 	if sheet.SchemaHash == "" {
@@ -111,7 +111,7 @@ func TestParseWorkbookRejectsDuplicateKeys(t *testing.T) {
 		Sheets: []model.RawSheet{{
 			Name: "Item",
 			Rows: [][]string{
-				{"*id", "name"},
+				{"id#", "name"},
 				{"int", "string"},
 				{"all", "all"},
 				{"ID", "Name"},
@@ -124,5 +124,52 @@ func TestParseWorkbookRejectsDuplicateKeys(t *testing.T) {
 	_, err := ParseWorkbook(raw, Options{Target: "both"})
 	if err == nil || !strings.Contains(err.Error(), "duplicate key") {
 		t.Fatalf("err = %v, want duplicate key", err)
+	}
+}
+
+func TestParseWorkbookRejectsEmptyRequiredField(t *testing.T) {
+	raw := model.RawWorkbook{
+		SourcePath: "Config.xlsx",
+		RelPath:    "Config.xlsx",
+		Sheets: []model.RawSheet{{
+			Name: "Item",
+			Rows: [][]string{
+				{"id#", "name*"},
+				{"int", "string"},
+				{"all", "all"},
+				{"ID", "Name"},
+				{"1", ""},
+			},
+		}},
+	}
+
+	_, err := ParseWorkbook(raw, Options{Target: "both"})
+	if err == nil || !strings.Contains(err.Error(), "field name is required") {
+		t.Fatalf("err = %v, want required field", err)
+	}
+}
+
+func TestParseWorkbookRejectsDuplicateUniqueField(t *testing.T) {
+	raw := model.RawWorkbook{
+		SourcePath: "Config.xlsx",
+		RelPath:    "Config.xlsx",
+		Sheets: []model.RawSheet{{
+			Name: "Item",
+			Rows: [][]string{
+				{"id#", "email!"},
+				{"int", "string"},
+				{"all", "all"},
+				{"ID", "Email"},
+				{"1", "a@test.com"},
+				{"2", ""},
+				{"3", ""},
+				{"4", "a@test.com"},
+			},
+		}},
+	}
+
+	_, err := ParseWorkbook(raw, Options{Target: "both"})
+	if err == nil || !strings.Contains(err.Error(), "duplicate unique value") {
+		t.Fatalf("err = %v, want duplicate unique field", err)
 	}
 }

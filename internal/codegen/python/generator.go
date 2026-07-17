@@ -73,6 +73,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	tableName := sheet.Name + constants.ConfigTableSuffix
 	keyTypeName := pythonType(keyField(sheet).Type)
 	keyMethodSuffix := pythonMethodSuffix(keyName(sheet))
+	uniqueFields := uniqueIndexFields(sheet, target)
 	loadName := pythonLoadFunctionName(tableName)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 
@@ -95,10 +96,24 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("\n\n")
 
 	b.WriteString("class " + tableName + ":\n")
-	b.WriteString("    def __init__(self, datas: dict[" + keyTypeName + ", " + typeName + "]) -> None:\n")
+	b.WriteString("    def __init__(self, datas: dict[" + keyTypeName + ", " + typeName + "]")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field) + ": dict[" + pythonType(field.Type) + ", " + typeName + "]")
+	}
+	b.WriteString(") -> None:\n")
 	b.WriteString("        self.datas = datas\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        self." + uniqueIndexName(field) + " = " + uniqueIndexName(field) + "\n")
+	}
+	if len(uniqueFields) > 0 {
+		b.WriteString("\n")
+	}
 	b.WriteString("    def try_get_by_" + keyMethodSuffix + "(self, key: " + keyTypeName + ") -> " + typeName + " | None:\n")
 	b.WriteString("        return self.datas.get(key)\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    def try_get_by_" + pythonMethodSuffix(field.Name) + "(self, key: " + pythonType(field.Type) + ") -> " + typeName + " | None:\n")
+		b.WriteString("        return self." + uniqueIndexName(field) + ".get(key)\n\n")
+	}
 	b.WriteString("    @staticmethod\n")
 	b.WriteString("    def load(data: bytes | bytearray | memoryview) -> \"" + tableName + "\":\n")
 	b.WriteString("        return " + loadName + "(data)\n\n")
@@ -123,6 +138,9 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            reader.read_string()\n")
 	b.WriteString("    row_count = reader.read_var_uint64()\n")
 	b.WriteString("    rows: dict[" + keyTypeName + ", " + typeName + "] = {}\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    " + uniqueIndexName(field) + ": dict[" + pythonType(field.Type) + ", " + typeName + "] = {}\n")
+	}
 	b.WriteString("    for _ in range(row_count):\n")
 	b.WriteString("        row_reader = IotaBytesReader(reader.read_bytes())\n")
 	b.WriteString("        row = " + typeName + "()\n")
@@ -142,7 +160,19 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            else:\n")
 	b.WriteString("                row_reader.skip(wire_type)\n")
 	b.WriteString("        rows[row." + keyName(sheet) + "] = row\n")
-	b.WriteString("    return " + tableName + "(rows)\n\n\n")
+	for _, field := range uniqueFields {
+		if cond := pythonUniqueIndexCondition(field); cond != "" {
+			b.WriteString("        if " + cond + ":\n")
+			b.WriteString("            " + uniqueIndexName(field) + "[row." + field.Name + "] = row\n")
+		} else {
+			b.WriteString("        " + uniqueIndexName(field) + "[row." + field.Name + "] = row\n")
+		}
+	}
+	b.WriteString("    return " + tableName + "(rows")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field))
+	}
+	b.WriteString(")\n\n\n")
 	b.WriteString("def " + loadName + "_from(read_bytes: Callable[[str], bytes | bytearray | memoryview]) -> " + tableName + ":\n")
 	b.WriteString("    if read_bytes is None:\n")
 	b.WriteString("        raise ValueError(\"read_bytes is None\")\n")
@@ -332,6 +362,27 @@ func keyName(sheet model.Sheet) string {
 		if field.IsKey {
 			return field.Name
 		}
+	}
+	return ""
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "_index"
+}
+
+func pythonUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "row." + field.Name + " != \"\""
 	}
 	return ""
 }

@@ -83,6 +83,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	tableName := sheet.Name + constants.ConfigTableSuffix
 	keyTypeName := cppType(keyField(sheet).Type)
 	keyMethodSuffix := keyMethodName(sheet)
+	uniqueFields := uniqueIndexFields(sheet, target)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 
 	b.WriteString("struct " + typeName + " {\n")
@@ -101,7 +102,25 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("public:\n")
 	b.WriteString("    using KeyType = " + keyTypeName + ";\n")
 	b.WriteString("    using DataMap = std::unordered_map<KeyType, " + typeName + ">;\n\n")
-	b.WriteString("    explicit " + tableName + "(DataMap datas) : datas_(std::move(datas)) {}\n\n")
+	b.WriteString("    explicit " + tableName + "(DataMap datas) : datas_(std::move(datas)) {\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        " + uniqueIndexName(field) + "_.reserve(datas_.size());\n")
+	}
+	if len(uniqueFields) > 0 {
+		b.WriteString("        for (const auto& entry : datas_) {\n")
+		b.WriteString("            const auto& row = entry.second;\n")
+		for _, field := range uniqueFields {
+			if cond := cppUniqueIndexCondition(field); cond != "" {
+				b.WriteString("            if (" + cond + ") {\n")
+				b.WriteString("                " + uniqueIndexName(field) + "_.emplace(row." + field.Name + ", entry.first);\n")
+				b.WriteString("            }\n")
+			} else {
+				b.WriteString("            " + uniqueIndexName(field) + "_.emplace(row." + field.Name + ", entry.first);\n")
+			}
+		}
+		b.WriteString("        }\n")
+	}
+	b.WriteString("    }\n\n")
 	b.WriteString("    const DataMap& Datas() const { return datas_; }\n\n")
 	b.WriteString("    bool TryGetBy" + keyMethodSuffix + "(const KeyType& key, const " + typeName + "*& value) const {\n")
 	b.WriteString("        auto it = datas_.find(key);\n")
@@ -112,6 +131,22 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("        value = &it->second;\n")
 	b.WriteString("        return true;\n")
 	b.WriteString("    }\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    bool TryGetBy" + field.Name + "(const " + cppType(field.Type) + "& key, const " + typeName + "*& value) const {\n")
+		b.WriteString("        auto it = " + uniqueIndexName(field) + "_.find(key);\n")
+		b.WriteString("        if (it == " + uniqueIndexName(field) + "_.end()) {\n")
+		b.WriteString("            value = nullptr;\n")
+		b.WriteString("            return false;\n")
+		b.WriteString("        }\n")
+		b.WriteString("        auto dataIt = datas_.find(it->second);\n")
+		b.WriteString("        if (dataIt == datas_.end()) {\n")
+		b.WriteString("            value = nullptr;\n")
+		b.WriteString("            return false;\n")
+		b.WriteString("        }\n")
+		b.WriteString("        value = &dataIt->second;\n")
+		b.WriteString("        return true;\n")
+		b.WriteString("    }\n\n")
+	}
 	b.WriteString("    static " + tableName + " Load(const std::vector<std::uint8_t>& data) {\n")
 	b.WriteString("        IotaBytesReader reader(data);\n")
 	b.WriteString("        reader.ExpectMagic();\n")
@@ -166,6 +201,9 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("    }\n\n")
 	b.WriteString("private:\n")
 	b.WriteString("    DataMap datas_;\n")
+	for _, field := range uniqueFields {
+		b.WriteString("    std::unordered_map<" + cppType(field.Type) + ", KeyType> " + uniqueIndexName(field) + "_;\n")
+	}
 	b.WriteString("};\n\n")
 }
 
@@ -415,6 +453,27 @@ func keyMethodName(sheet model.Sheet) string {
 		return "Key"
 	}
 	return name
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "Index"
+}
+
+func cppUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "!row." + field.Name + ".empty()"
+	}
+	return ""
 }
 
 func sanitizeComment(comment string) string {

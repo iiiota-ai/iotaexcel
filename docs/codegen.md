@@ -31,8 +31,8 @@ iotaexcel codegen --input ./excels --output ./generated --lang swift
 每个 sheet 会生成：
 
 - `SheetNameConfig`：单行配置数据类型。
-- `SheetNameConfigTable`：按唯一 key 建索引的 table/loader 类型。
-- 安全查询方法：按唯一 key 返回单行配置，未命中时返回目标语言对应的空值/`false`。
+- `SheetNameConfigTable`：按 key 和非 key 唯一字段建索引的 table/loader 类型。
+- 安全查询方法：按 key 或 `!` 唯一字段返回单行配置，未命中时返回目标语言对应的空值/`false`。
 - 直接加载入口：从完整 `.bytes` 字节加载 table。
 - 文件名回调加载入口：把约定的 `.bytes` 文件名交给业务层读取，再复用直接加载入口解码。
 

@@ -181,18 +181,18 @@ New-Item -ItemType Directory -Force -Path $ExcelRoot | Out-Null
 
 # 主合法 fixture：覆盖 key、用途别名、基础类型、负整数、日期、array、map、comment、空行跳过。
 $validItem = @(
-  @("*id", "name", "enabled", "score", "big", "ratio", "price", "createdAt", "tags", "attrs", "note", "serverOnly", "clientOnly"),
-  @("int", "string", "bool", "int32", "int64", "float", "double", "datetime", "array<string>", "map<string,int>", "string", "string", "string"),
-  @("all", "all", "c", "client", "server", "all", "all", "all", "all", "all", "comment", "srv", "CLIENT"),
-  @("unique id", "name", "enabled", "negative int", "long integer", "float value", "double value", "created time", "tags", "attrs", "note", "server field", "client field"),
-  @("1001", "Sword", "true", "-12", "-900719925474", "1.5", "3.14159", "2026-07-10 18:47:00", "weapon|rare", "atk:10|level:2", "internal note", "srv value", "cli value"),
-  @("", "", "", "", "", "", "", "", "", "", "", "", ""),
-  @("1002", "Shield", "0", "0", "42", "0", "1.25", "2026-07-11 09:30:00", "armor|common", "def:20|level:1", "remark", "srv2", "cli2")
+  @("id#", "name!", "label*", "enabled", "score", "big", "ratio", "price", "createdAt", "tags", "attrs", "note", "serverOnly", "clientOnly!"),
+  @("int", "string", "string", "bool", "int32", "int64", "float", "double", "datetime", "array<string>", "map<string,int>", "string", "string", "string"),
+  @("all", "all", "all", "c", "client", "server", "all", "all", "all", "all", "all", "comment", "srv", "CLIENT"),
+  @("unique id", "name", "required label", "enabled", "negative int", "long integer", "float value", "double value", "created time", "tags", "attrs", "note", "server field", "unique client field"),
+  @("1001", "Sword", "Weapon", "true", "-12", "-900719925474", "1.5", "3.14159", "2026-07-10 18:47:00", "weapon|rare", "atk:10|level:2", "internal note", "srv value", "cli value"),
+  @("", "", "", "", "", "", "", "", "", "", "", "", "", ""),
+  @("1002", "Shield", "Armor", "0", "0", "42", "0", "1.25", "2026-07-11 09:30:00", "armor|common", "def:20|level:1", "remark", "srv2", "cli2")
 )
 
 # 第二个合法 sheet：覆盖 ref<Item> 引用和字符串 key。
 $validHero = @(
-  @("*id", "itemRef", "name", "active"),
+  @("id#", "itemRef", "name", "active"),
   @("string", "ref<Item>", "string", "bool"),
   @("all", "all", "all", "all"),
   @("hero id", "ref Item key", "name", "active"),
@@ -209,7 +209,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "valid/Config.xlsx") -Sheets @(
 # InlineStrings.xlsx 用于验证 inlineStr 单元格读取。
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "valid/InlineStrings.xlsx") -InlineStrings -Sheets @(
   (Sheet "Inline" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -220,7 +220,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "valid/InlineStrings.xlsx") -InlineSt
 # Defaults.xlsx 用于验证空值和非法值是否按类型回退默认值。
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "valid/Defaults.xlsx") -Sheets @(
   (Sheet "Defaults" @(
-    @("*id", "badBool", "badInt", "badDate", "emptyString", "emptyArray", "emptyRef"),
+    @("id#", "badBool", "badInt", "badDate", "emptyString", "emptyArray", "emptyRef"),
     @("int", "bool", "int32", "datetime", "string", "array<string>", "ref<Item>"),
     @("all", "all", "all", "all", "all", "all", "all"),
     @("ID", "default false", "default zero", "default year one", "default empty string", "default null", "default null"),
@@ -241,7 +241,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/MissingKey.xlsx") -Sheets @(
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/DuplicateKey.xlsx") -Sheets @(
   (Sheet "DuplicateKey" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -252,7 +252,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/DuplicateKey.xlsx") -Sheets 
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidFieldName.xlsx") -Sheets @(
   (Sheet "InvalidFieldName" @(
-    @("*1id", "name"),
+    @("1id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -262,7 +262,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidFieldName.xlsx") -She
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidUsage.xlsx") -Sheets @(
   (Sheet "InvalidUsage" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "unknown"),
     @("ID", "name"),
@@ -272,7 +272,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidUsage.xlsx") -Sheets 
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidType.xlsx") -Sheets @(
   (Sheet "InvalidType" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "vector3"),
     @("all", "all"),
     @("ID", "name"),
@@ -282,7 +282,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidType.xlsx") -Sheets @
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/CommentKey.xlsx") -Sheets @(
   (Sheet "CommentKey" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("comment", "all"),
     @("ID", "name"),
@@ -292,7 +292,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/CommentKey.xlsx") -Sheets @(
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/EmptyKey.xlsx") -Sheets @(
   (Sheet "EmptyKey" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -302,7 +302,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/EmptyKey.xlsx") -Sheets @(
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidFileName.xlsx") -Sheets @(
   (Sheet "ValidSheet" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -313,7 +313,7 @@ Rename-Item (Join-Path $ExcelRoot "invalid/InvalidFileName.xlsx") (Join-Path $Ex
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidSheetName.xlsx") -Sheets @(
   (Sheet "Invalid Sheet" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "名称"),
@@ -323,7 +323,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/InvalidSheetName.xlsx") -She
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/RefMissing.xlsx") -Sheets @(
   (Sheet "Hero" @(
-    @("*id", "itemRef"),
+    @("id#", "itemRef"),
     @("int", "ref<Item>"),
     @("all", "all"),
     @("ID", "missing ref table"),
@@ -333,7 +333,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "invalid/RefMissing.xlsx") -Sheets @(
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "nested/SubConfig.xlsx") -Sheets @(
   (Sheet "SubConfig" @(
-    @("*id", "name"),
+    @("id#", "name"),
     @("int", "string"),
     @("all", "all"),
     @("ID", "name"),
@@ -343,7 +343,7 @@ New-Xlsx -OutputPath (Join-Path $ExcelRoot "nested/SubConfig.xlsx") -Sheets @(
 
 New-Xlsx -OutputPath (Join-Path $ExcelRoot "~`$Temp.xlsx") -Sheets @(
   (Sheet "Temp" @(
-    @("*id"),
+    @("id#"),
     @("int"),
     @("all"),
     @("ID"),

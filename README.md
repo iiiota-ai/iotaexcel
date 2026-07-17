@@ -116,7 +116,7 @@ iotaexcel codegen --config ./iotaexcel.codegen.conf
 ## 规则概览
 
 - 每个 sheet 至少需要 5 行：字段名、字段类型、字段用途、字段注释、数据行。
-- 字段名可用 `*id` 或 `id*` 标记唯一 key。
+- 字段名后缀 `#` 表示 key，且隐含必填和唯一；`*` 表示必填；`!` 表示唯一。
 - 字段名、sheet 名和 Excel 文件名必须满足 `^[A-Za-z_][A-Za-z0-9_]*$`。
 - 字段用途支持 `client`、`server`、`all`、`comment` 及常用别名。
 - 每个 sheet 导出一个 `.bytes` 文件，命名为 `Excel名_Sheet名Config.bytes`。

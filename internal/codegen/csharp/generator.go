@@ -91,6 +91,7 @@ func renderClass(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	tableName := sheet.Name + constants.ConfigTableSuffix
 	keyTypeName := keyType(sheet)
 	keyMethodSuffix := keyMethodName(sheet)
+	uniqueFields := uniqueIndexFields(sheet, target)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 	b.WriteString("    public sealed class " + className + "\n    {\n")
 	for _, field := range sheet.Fields {
@@ -106,12 +107,29 @@ func renderClass(b *strings.Builder, sheet model.Sheet, target, workbookName str
 
 	b.WriteString("    public sealed class " + tableName + "\n    {\n")
 	b.WriteString("        private readonly IReadOnlyDictionary<" + keyTypeName + ", " + className + "> datas;\n\n")
-	b.WriteString("        private " + tableName + "(IReadOnlyDictionary<" + keyTypeName + ", " + className + "> datas)\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        private readonly IReadOnlyDictionary<" + csharpType(field.Type) + ", " + className + "> " + uniqueIndexName(field) + ";\n")
+	}
+	if len(uniqueFields) > 0 {
+		b.WriteString("\n")
+	}
+	b.WriteString("        private " + tableName + "(IReadOnlyDictionary<" + keyTypeName + ", " + className + "> datas")
+	for _, field := range uniqueFields {
+		b.WriteString(", IReadOnlyDictionary<" + csharpType(field.Type) + ", " + className + "> " + uniqueIndexName(field))
+	}
+	b.WriteString(")\n")
 	b.WriteString("        {\n")
 	b.WriteString("            this.datas = datas;\n")
+	for _, field := range uniqueFields {
+		b.WriteString("            this." + uniqueIndexName(field) + " = " + uniqueIndexName(field) + ";\n")
+	}
 	b.WriteString("        }\n\n")
 	b.WriteString("        public IReadOnlyDictionary<" + keyTypeName + ", " + className + "> Datas => datas;\n\n")
 	b.WriteString("        public bool TryGetBy" + keyMethodSuffix + "(" + keyTypeName + " key, out " + className + " value) => datas.TryGetValue(key, out value);\n")
+	for _, field := range uniqueFields {
+		b.WriteString("\n")
+		b.WriteString("        public bool TryGetBy" + field.Name + "(" + csharpType(field.Type) + " key, out " + className + " value) => " + uniqueIndexName(field) + ".TryGetValue(key, out value);\n")
+	}
 	b.WriteString("\n")
 	b.WriteString("        public static " + tableName + " Load(byte[] data)\n")
 	b.WriteString("        {\n")
@@ -137,6 +155,9 @@ func renderClass(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            }\n")
 	b.WriteString("            var rowCount = reader.ReadVarUInt64();\n")
 	b.WriteString("            var rows = new Dictionary<" + keyTypeName + ", " + className + ">();\n")
+	for _, field := range uniqueFields {
+		b.WriteString("            var " + uniqueIndexName(field) + " = new Dictionary<" + csharpType(field.Type) + ", " + className + ">();\n")
+	}
 	b.WriteString("            for (ulong i = 0; i < rowCount; i++)\n")
 	b.WriteString("            {\n")
 	b.WriteString("                var rowReader = new IotaBytesReader(reader.ReadBytes());\n")
@@ -162,12 +183,26 @@ func renderClass(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("                    }\n")
 	b.WriteString("                }\n")
 	b.WriteString("                rows[row." + keyName(sheet) + "] = row;\n")
+	for _, field := range uniqueFields {
+		if cond := csharpUniqueIndexCondition(field); cond != "" {
+			b.WriteString("                if (" + cond + ")\n")
+			b.WriteString("                {\n")
+			b.WriteString("                    " + uniqueIndexName(field) + "[row." + field.Name + "] = row;\n")
+			b.WriteString("                }\n")
+		} else {
+			b.WriteString("                " + uniqueIndexName(field) + "[row." + field.Name + "] = row;\n")
+		}
+	}
 	b.WriteString("            }\n")
 	b.WriteString("            _ = version;\n")
 	b.WriteString("            _ = schemaHash;\n")
 	b.WriteString("            _ = keyFieldNo;\n")
 	b.WriteString("            _ = selfDescribing;\n")
-	b.WriteString("            return new " + tableName + "(rows);\n")
+	b.WriteString("            return new " + tableName + "(rows")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field))
+	}
+	b.WriteString(");\n")
 	b.WriteString("        }\n")
 	b.WriteString("\n")
 	b.WriteString("        public static async Task<" + tableName + "> LoadAsync(Func<string, Task<byte[]>> readBytesAsync)\n")
@@ -419,6 +454,27 @@ func keyMethodName(sheet model.Sheet) string {
 		return "Key"
 	}
 	return name
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "Index"
+}
+
+func csharpUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "!string.IsNullOrEmpty(row." + field.Name + ")"
+	}
+	return ""
 }
 
 // escapeComment 转义 XML 文档注释中的特殊字符。

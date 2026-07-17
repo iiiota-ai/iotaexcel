@@ -87,6 +87,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	keyTypeName := javaType(key.Type)
 	keyBoxedTypeName := javaBoxedType(key.Type)
 	keyMethodSuffix := keyMethodName(sheet)
+	uniqueFields := uniqueIndexFields(sheet, target)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 
 	b.WriteString("    public static final class " + typeName + " {\n")
@@ -103,13 +104,31 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 
 	b.WriteString("    public static final class " + tableName + " {\n")
 	b.WriteString("        private final Map<" + keyBoxedTypeName + ", " + typeName + "> datas;\n\n")
-	b.WriteString("        private " + tableName + "(Map<" + keyBoxedTypeName + ", " + typeName + "> datas) {\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        private final Map<" + javaBoxedType(field.Type) + ", " + typeName + "> " + uniqueIndexName(field) + ";\n")
+	}
+	if len(uniqueFields) > 0 {
+		b.WriteString("\n")
+	}
+	b.WriteString("        private " + tableName + "(Map<" + keyBoxedTypeName + ", " + typeName + "> datas")
+	for _, field := range uniqueFields {
+		b.WriteString(", Map<" + javaBoxedType(field.Type) + ", " + typeName + "> " + uniqueIndexName(field))
+	}
+	b.WriteString(") {\n")
 	b.WriteString("            this.datas = Collections.unmodifiableMap(datas);\n")
+	for _, field := range uniqueFields {
+		b.WriteString("            this." + uniqueIndexName(field) + " = Collections.unmodifiableMap(" + uniqueIndexName(field) + ");\n")
+	}
 	b.WriteString("        }\n\n")
 	b.WriteString("        public Map<" + keyBoxedTypeName + ", " + typeName + "> datas() { return datas; }\n\n")
 	b.WriteString("        public " + typeName + " tryGetBy" + keyMethodSuffix + "(" + keyTypeName + " key) {\n")
 	b.WriteString("            return datas.get(key);\n")
 	b.WriteString("        }\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("        public " + typeName + " tryGetBy" + field.Name + "(" + javaType(field.Type) + " key) {\n")
+		b.WriteString("            return " + uniqueIndexName(field) + ".get(key);\n")
+		b.WriteString("        }\n\n")
+	}
 	b.WriteString("        public static " + tableName + " load(byte[] data) {\n")
 	b.WriteString("            IotaExcelRuntime.Reader reader = new IotaExcelRuntime.Reader(data);\n")
 	b.WriteString("            reader.expectMagic();\n")
@@ -130,6 +149,9 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            }\n")
 	b.WriteString("            long rowCount = reader.readVarUInt64();\n")
 	b.WriteString("            Map<" + keyBoxedTypeName + ", " + typeName + "> rows = new LinkedHashMap<>();\n")
+	for _, field := range uniqueFields {
+		b.WriteString("            Map<" + javaBoxedType(field.Type) + ", " + typeName + "> " + uniqueIndexName(field) + " = new LinkedHashMap<>();\n")
+	}
 	b.WriteString("            for (long i = 0; i < rowCount; i++) {\n")
 	b.WriteString("                IotaExcelRuntime.Reader rowReader = new IotaExcelRuntime.Reader(reader.readBytes());\n")
 	b.WriteString("                " + typeName + " row = new " + typeName + "();\n")
@@ -152,8 +174,21 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("                    }\n")
 	b.WriteString("                }\n")
 	b.WriteString("                rows.put(row." + keyName(sheet) + ", row);\n")
+	for _, field := range uniqueFields {
+		if cond := javaUniqueIndexCondition(field); cond != "" {
+			b.WriteString("                if (" + cond + ") {\n")
+			b.WriteString("                    " + uniqueIndexName(field) + ".put(row." + field.Name + ", row);\n")
+			b.WriteString("                }\n")
+		} else {
+			b.WriteString("                " + uniqueIndexName(field) + ".put(row." + field.Name + ", row);\n")
+		}
+	}
 	b.WriteString("            }\n")
-	b.WriteString("            return new " + tableName + "(rows);\n")
+	b.WriteString("            return new " + tableName + "(rows")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field))
+	}
+	b.WriteString(");\n")
 	b.WriteString("        }\n\n")
 	b.WriteString("        public static " + tableName + " loadFrom(IotaExcelRuntime.BytesReader readBytes) throws Exception {\n")
 	b.WriteString("            if (readBytes == null) {\n")
@@ -384,6 +419,27 @@ func keyMethodName(sheet model.Sheet) string {
 		return "Key"
 	}
 	return name
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "Index"
+}
+
+func javaUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "row." + field.Name + " != null && !row." + field.Name + ".isEmpty()"
+	}
+	return ""
 }
 
 func sanitizeComment(comment string) string {

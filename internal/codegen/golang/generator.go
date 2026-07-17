@@ -75,6 +75,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	tableName := sheet.Name + constants.ConfigTableSuffix
 	keyTypeName := goType(keyField(sheet).Type)
 	keyMethodSuffix := keyMethodName(sheet)
+	uniqueFields := uniqueIndexFields(sheet, target)
 	bytesFileName := workbookName + "_" + sheet.Name + constants.ConfigSuffix + constants.BytesExtension
 
 	b.WriteString("type " + typeName + " struct {\n")
@@ -91,6 +92,9 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 
 	b.WriteString("type " + tableName + " struct {\n")
 	b.WriteString("\tdatas map[" + keyTypeName + "]*" + typeName + "\n")
+	for _, field := range uniqueFields {
+		b.WriteString("\t" + uniqueIndexName(field) + " map[" + goType(field.Type) + "]*" + typeName + "\n")
+	}
 	b.WriteString("}\n\n")
 	b.WriteString("func (t *" + tableName + ") Datas() map[" + keyTypeName + "]*" + typeName + " {\n")
 	b.WriteString("\treturn t.datas\n")
@@ -99,6 +103,12 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("\tvalue, ok := t.datas[key]\n")
 	b.WriteString("\treturn value, ok\n")
 	b.WriteString("}\n\n")
+	for _, field := range uniqueFields {
+		b.WriteString("func (t *" + tableName + ") TryGetBy" + field.Name + "(key " + goType(field.Type) + ") (*" + typeName + ", bool) {\n")
+		b.WriteString("\tvalue, ok := t." + uniqueIndexName(field) + "[key]\n")
+		b.WriteString("\treturn value, ok\n")
+		b.WriteString("}\n\n")
+	}
 
 	b.WriteString("func Load" + tableName + "(data []byte) (*" + tableName + ", error) {\n")
 	b.WriteString("\treader := newIotaBytesReader(data)\n")
@@ -146,6 +156,9 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("\t\treturn nil, err\n")
 	b.WriteString("\t}\n")
 	b.WriteString("\trows := make(map[" + keyTypeName + "]*" + typeName + ", rowCount)\n")
+	for _, field := range uniqueFields {
+		b.WriteString("\t" + uniqueIndexName(field) + " := make(map[" + goType(field.Type) + "]*" + typeName + ", rowCount)\n")
+	}
 	b.WriteString("\tfor i := uint64(0); i < rowCount; i++ {\n")
 	b.WriteString("\t\trowData, err := reader.readBytes()\n")
 	b.WriteString("\t\tif err != nil {\n")
@@ -179,8 +192,21 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("\t\t\t}\n")
 	b.WriteString("\t\t}\n")
 	b.WriteString("\t\trows[row." + goFieldName(keyName(sheet)) + "] = row\n")
+	for _, field := range uniqueFields {
+		if cond := goUniqueIndexCondition(field); cond != "" {
+			b.WriteString("\t\tif " + cond + " {\n")
+			b.WriteString("\t\t\t" + uniqueIndexName(field) + "[row." + goFieldName(field.Name) + "] = row\n")
+			b.WriteString("\t\t}\n")
+		} else {
+			b.WriteString("\t\t" + uniqueIndexName(field) + "[row." + goFieldName(field.Name) + "] = row\n")
+		}
+	}
 	b.WriteString("\t}\n")
-	b.WriteString("\treturn &" + tableName + "{datas: rows}, nil\n")
+	b.WriteString("\treturn &" + tableName + "{datas: rows")
+	for _, field := range uniqueFields {
+		b.WriteString(", " + uniqueIndexName(field) + ": " + uniqueIndexName(field))
+	}
+	b.WriteString("}, nil\n")
 	b.WriteString("}\n\n")
 	b.WriteString("func Load" + tableName + "From(readBytes func(string) ([]byte, error)) (*" + tableName + ", error) {\n")
 	b.WriteString("\tif readBytes == nil {\n")
@@ -447,6 +473,27 @@ func keyMethodName(sheet model.Sheet) string {
 		return "Key"
 	}
 	return name
+}
+
+func uniqueIndexFields(sheet model.Sheet, target string) []model.Field {
+	fields := []model.Field{}
+	for _, field := range sheet.Fields {
+		if field.Unique && !field.IsKey && includeField(field, target) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
+func uniqueIndexName(field model.Field) string {
+	return field.Name + "Index"
+}
+
+func goUniqueIndexCondition(field model.Field) string {
+	if field.Type.Kind == model.TypeString && !field.Required {
+		return "row." + goFieldName(field.Name) + " != \"\""
+	}
+	return ""
 }
 
 func goFieldName(name string) string {

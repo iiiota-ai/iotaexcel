@@ -1,7 +1,7 @@
 // Package schema 负责把 xlsx 包读取出的原始字符串矩阵解析成强类型配置模型。
 //
 // 这里集中实现 Excel 规则校验：文件名/sheet 名/字段名标识符检查、前 4 行表头解析、
-// 唯一 key 约束、字段用途别名、类型转换、默认值处理、空行跳过和 schemaHash 计算。
+// key/required/unique 约束、字段用途别名、类型转换、默认值处理、空行跳过和 schemaHash 计算。
 package schema
 
 import (
@@ -54,7 +54,7 @@ func ParseWorkbook(raw model.RawWorkbook, opts Options) (model.Workbook, error) 
 
 // parseSheet 解析单个 sheet。
 // 规则要求前 4 行分别是字段名、类型、用途、注释，第 5 行开始才是数据；
-// 解析表头时会确定 fieldNo/wireType/key 字段，解析数据时会跳过全空行并检查 key 唯一性。
+// 解析表头时会确定 fieldNo/wireType/key/required/unique 字段，解析数据时会跳过全空行并检查约束。
 func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 	if len(raw.Rows) < 5 {
 		return model.Sheet{}, fmt.Errorf("sheet must contain at least 5 rows")
@@ -68,7 +68,7 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 
 	for col := 0; col < maxCols; col++ {
 		rawName := cellAt(raw.Rows[0], col)
-		name, isKey, err := parseFieldName(rawName)
+		name, markers, err := parseFieldName(rawName)
 		if err != nil {
 			return model.Sheet{}, fmt.Errorf("column %d field name: %w", col+1, err)
 		}
@@ -85,7 +85,7 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 		if err != nil {
 			return model.Sheet{}, fmt.Errorf("field %s usage: %w", name, err)
 		}
-		if isKey {
+		if markers.IsKey {
 			keyCount++
 			keyColumn = col
 			if usage == model.UsageComment {
@@ -94,6 +94,16 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 			if !isAllowedKeyType(typeSpec.Kind) {
 				return model.Sheet{}, fmt.Errorf("key field %s type %s is not allowed", name, typeSpec.Raw)
 			}
+		} else if markers.Unique {
+			if usage == model.UsageComment {
+				return model.Sheet{}, fmt.Errorf("unique field %s cannot be comment", name)
+			}
+			if !isAllowedUniqueType(typeSpec.Kind) {
+				return model.Sheet{}, fmt.Errorf("unique field %s type %s is not allowed", name, typeSpec.Raw)
+			}
+			if !markers.Required && typeSpec.Kind != model.TypeString {
+				return model.Sheet{}, fmt.Errorf("unique field %s type %s must be required or string", name, typeSpec.Raw)
+			}
 		}
 		fields = append(fields, model.Field{
 			Name:        name,
@@ -101,7 +111,9 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 			Type:        typeSpec,
 			Usage:       usage,
 			Comment:     cellAt(raw.Rows[3], col),
-			IsKey:       isKey,
+			IsKey:       markers.IsKey,
+			Required:    markers.Required,
+			Unique:      markers.Unique,
 			ColumnIndex: col,
 			FieldNo:     uint64(col + 1),
 			WireType:    wireType(typeSpec.Kind),
@@ -116,7 +128,12 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 	}
 
 	sheet := model.Sheet{Name: raw.Name, Fields: fields}
-	keys := map[string]bool{}
+	uniqueValues := map[string]map[string]int{}
+	for _, field := range fields {
+		if field.Unique {
+			uniqueValues[field.Name] = map[string]int{}
+		}
+	}
 	for i := 4; i < len(raw.Rows); i++ {
 		row := raw.Rows[i]
 		if isEmptyRow(row) {
@@ -128,14 +145,27 @@ func parseSheet(raw model.RawSheet, opts Options) (model.Sheet, error) {
 		if key == "" {
 			return model.Sheet{}, fmt.Errorf("row %d key is empty", i+1)
 		}
-		if keys[key] {
-			return model.Sheet{}, fmt.Errorf("row %d duplicate key %q", i+1, key)
-		}
-		keys[key] = true
 
 		parsed := model.Row{Index: i + 1, Key: key, Values: map[string]model.CellValue{}}
 		for _, field := range fields {
 			rawValue := cellAt(row, field.ColumnIndex)
+			trimmedValue := strings.TrimSpace(rawValue)
+			if field.Required && trimmedValue == "" {
+				if field.IsKey {
+					return model.Sheet{}, fmt.Errorf("row %d key is empty", i+1)
+				}
+				return model.Sheet{}, fmt.Errorf("row %d field %s is required", i+1, field.Name)
+			}
+			if field.Unique && trimmedValue != "" {
+				values := uniqueValues[field.Name]
+				if firstRow, ok := values[trimmedValue]; ok {
+					if field.IsKey {
+						return model.Sheet{}, fmt.Errorf("row %d duplicate key %q", i+1, trimmedValue)
+					}
+					return model.Sheet{}, fmt.Errorf("row %d field %s duplicate unique value %q, first seen at row %d", i+1, field.Name, trimmedValue, firstRow)
+				}
+				values[trimmedValue] = i + 1
+			}
 			value, usedDefault, convErr := ConvertValue(rawValue, field.Type)
 			cell := model.CellValue{Raw: rawValue, Value: value, Default: usedDefault}
 			if convErr != nil {
@@ -306,7 +336,7 @@ func ConvertValue(raw string, typ model.TypeSpec) (any, bool, error) {
 }
 
 // SchemaHash 计算 sheet schema 的稳定摘要。
-// 摘要包含 sheet 名、目标、二进制版本、字段名、字段类型、用途、fieldNo、wireType 和是否写入二进制；
+// 摘要包含 sheet 名、目标、二进制版本、字段名、字段类型、用途、key/required/unique、fieldNo、wireType 和是否写入二进制；
 // 当前开发阶段不做版本兼容，schemaHash 主要用于非自描述 .bytes 的外部 schema 匹配。
 func SchemaHash(sheet model.Sheet, target string) string {
 	var b strings.Builder
@@ -323,6 +353,12 @@ func SchemaHash(sheet model.Sheet, target string) string {
 		b.WriteString("|")
 		b.WriteString(string(field.Usage))
 		b.WriteString("|")
+		b.WriteString(strconv.FormatBool(field.IsKey))
+		b.WriteString("|")
+		b.WriteString(strconv.FormatBool(field.Required))
+		b.WriteString("|")
+		b.WriteString(strconv.FormatBool(field.Unique))
+		b.WriteString("|")
 		b.WriteString(strconv.FormatUint(field.FieldNo, 10))
 		b.WriteString("|")
 		b.WriteString(strconv.FormatUint(field.WireType, 10))
@@ -334,25 +370,55 @@ func SchemaHash(sheet model.Sheet, target string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// parseFieldName 解析字段名并识别唯一 key 标记。
-// 只允许在字段名前后放一个星号，例如 *id 或 id*；去掉星号后的名称必须满足 identRE。
-func parseFieldName(raw string) (string, bool, error) {
+type fieldMarkers struct {
+	IsKey    bool
+	Required bool
+	Unique   bool
+}
+
+// parseFieldName 解析字段名并识别字段标记。
+// # 表示 key，且隐含 required 和 unique；* 表示 required；! 表示 unique。
+// 标记只能放在字段名末尾，例如 id#、name*、email! 或 email*!。
+func parseFieldName(raw string) (string, fieldMarkers, error) {
 	name := strings.TrimSpace(raw)
 	if name == "" {
-		return "", false, fmt.Errorf("field name is empty")
+		return "", fieldMarkers{}, fmt.Errorf("field name is empty")
 	}
-	if strings.Count(name, "*") > 1 {
-		return "", false, fmt.Errorf("field name has multiple key markers")
+
+	markers := fieldMarkers{}
+	for len(name) > 0 {
+		last := name[len(name)-1]
+		switch last {
+		case '#':
+			if markers.IsKey {
+				return "", fieldMarkers{}, fmt.Errorf("field name has multiple key markers")
+			}
+			markers.IsKey = true
+			markers.Required = true
+			markers.Unique = true
+		case '*':
+			if markers.Required {
+				return "", fieldMarkers{}, fmt.Errorf("field name has multiple required markers")
+			}
+			markers.Required = true
+		case '!':
+			if markers.Unique {
+				return "", fieldMarkers{}, fmt.Errorf("field name has multiple unique markers")
+			}
+			markers.Unique = true
+		default:
+			goto done
+		}
+		name = strings.TrimSpace(name[:len(name)-1])
 	}
-	isKey := strings.HasPrefix(name, "*") || strings.HasSuffix(name, "*")
-	if strings.Contains(strings.Trim(name, "*"), "*") {
-		return "", false, fmt.Errorf("field name has invalid key marker position")
+done:
+	if strings.ContainsAny(name, "#*!") {
+		return "", fieldMarkers{}, fmt.Errorf("field name has invalid marker position")
 	}
-	name = strings.Trim(name, "*")
 	if !identRE.MatchString(name) {
-		return "", false, fmt.Errorf("%q is not a valid identifier", raw)
+		return "", fieldMarkers{}, fmt.Errorf("%q is not a valid identifier", raw)
 	}
-	return name, isKey, nil
+	return name, markers, nil
 }
 
 // defaultValue 返回类型对应的默认值。
@@ -409,6 +475,12 @@ func splitTopLevel(raw string) []string {
 // key 需要稳定、可比较并能作为 C# Dictionary 的索引，因此只允许整数和字符串。
 func isAllowedKeyType(kind model.TypeKind) bool {
 	return kind == model.TypeInt || kind == model.TypeInt32 || kind == model.TypeInt64 || kind == model.TypeString
+}
+
+// isAllowedUniqueType 限制可生成查询索引的唯一字段类型。
+// 当前只允许和 key 一样稳定、可比较且能跨语言作为 map/dictionary key 的类型。
+func isAllowedUniqueType(kind model.TypeKind) bool {
+	return isAllowedKeyType(kind)
 }
 
 // wireType 把字段类型映射到 protobuf 风格 wire type。

@@ -34,7 +34,7 @@
 示例：
 
 ```text
-feat(schema): 支持字段名星号标记唯一 key
+feat(schema): 支持字段约束标记
 fix(binary): 修正 sint64 ZigZag 编码
 docs(format): 补充 ref<Item> 单元格示例
 ```
