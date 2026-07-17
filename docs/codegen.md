@@ -12,6 +12,28 @@ iotaexcel codegen --input ./excels --output ./generated --lang python
 iotaexcel codegen --input ./excels --output ./generated --lang swift
 ```
 
+## 版本要求与兼容风险
+
+下表是当前生成代码的建议最低版本。这里按生成代码实际使用的语言特性和标准库 API 估算，业务项目还需要结合自己的构建系统、运行平台和引擎环境验证。
+
+| 目标语言 | 建议最低版本 | 主要依据 |
+| --- | --- | --- |
+| C# | C# 8.0 / .NET Standard 2.1 或 .NET Core 3.x+ | 生成代码使用 nullable reference type 写法，例如 `string?`、`List<string>?`，并提供 `Task` 异步加载入口。 |
+| Go | Go 1.19 | 项目 `go.mod` 使用 `go 1.19`；生成代码本身不依赖泛型，但建议与工具链保持一致。 |
+| C++ | C++11 | 生成代码使用 `auto`、`nullptr`、`std::move`、`std::function`、`std::unordered_map`、`std::uint8_t` 等 C++11 能力。 |
+| Java | Java 8 | 生成代码使用 `@FunctionalInterface`，`loadFrom` 适合用 Java 8 lambda 接入资源读取。 |
+| JavaScript | ES2020 | 生成代码使用 ES Module、`class`、`async/await`、`BigInt`、`Uint8Array`、`DataView`、`TextDecoder`。 |
+| Python | Python 3.10 | 生成代码使用 `bytes | bytearray | memoryview` 联合类型语法，以及 `list[str]`、`dict[str, str]` 泛型内置类型标注。 |
+| Swift | Swift 5 | 生成代码使用 `Foundation.Data`、`throws`、泛型数组/字典和 `String(decoding:as:)` 等现代 Swift 写法。 |
+
+主要兼容风险：
+
+- JavaScript 的 `int64` 和 `datetime` 会映射为 `bigint`，可以避免 64 位整数精度丢失，但旧浏览器、旧 WebView、部分小游戏或嵌入式 JS 引擎可能不支持 `BigInt`。如果必须兼容这些环境，需要考虑把 64 位整数改成字符串或受控地降级为 `number`。
+- Python 当前类型标注要求 Python 3.10。若业务项目仍在 Python 3.8/3.9，需要把联合类型语法改成 `typing.Union[...]`，或在生成器中增加兼容模式。
+- C# 的 nullable reference type 写法依赖较新的 C# 编译器配置。老 Unity、老 .NET Framework 或关闭 nullable 支持的项目可能需要降级生成模板。
+- Swift 当前只做生成内容检查，未在所有目标平台做编译验证；iOS、macOS、Linux Swift 工具链和 Foundation 可用性仍建议由业务项目自行验证。
+- JavaScript、Swift、C# 等语言的异步或回调加载入口只负责把 `.bytes` 文件名交给业务层，实际文件系统、网络、包体资源、Addressables、AssetBundle、WebView 沙盒等平台差异需要业务层适配。
+
 ## 命名规则
 
 - Excel 文件名会追加 `.config` 后缀作为生成的代码文件名。例如 `Config.xlsx` 会生成 `Config.config.cs`。
