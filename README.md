@@ -24,17 +24,17 @@ Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Current
 ```
 
 Linux/macOS:
 
 ```bash
 sh scripts/build.sh
-sh scripts/build.sh --all
+sh scripts/build.sh --current
 ```
 
-构建产物输出到 `dist/`。默认构建使用 `CGO_ENABLED=0`、`-trimpath`、`-ldflags="-s -w"`，并生成 `dist/sha256sums.txt`。
+构建产物输出到 `dist/`。默认构建常用 Windows/Linux/macOS 目标；传入 `-Current` 或 `--current` 时只构建当前平台。构建使用 `CGO_ENABLED=0`、`-trimpath`、`-ldflags="-s -w"`，并生成 `dist/sha256sums.txt`。
 
 ## 验证
 
@@ -55,7 +55,7 @@ sh scripts/check-docs.sh
 sh scripts/test.sh
 ```
 
-GitHub Actions 会在 push 和 pull request 时执行格式检查、文档检查、Go 测试，并运行 `scripts/build.sh --all` 验证多平台发布产物。
+GitHub Actions 会在 push 和 pull request 时执行格式检查、文档检查、Go 测试，并运行 `scripts/build.sh` 验证多平台发布产物。
 
 推送 `v*` tag 时，GitHub Actions 会创建 GitHub Release，并上传 `dist/` 下的多平台可执行文件和 `sha256sums.txt`。
 

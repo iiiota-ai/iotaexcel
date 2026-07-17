@@ -3,7 +3,7 @@ set -eu
 
 # 构建 iotaexcel 单文件可执行程序。
 # go build 只会编译 ./cmd/iotaexcel 及其正常依赖，不会把 *_test.go 或 tests/testdata 打包进可执行文件。
-# 默认构建当前平台；传入 --all 时构建常用 Windows/Linux/macOS 目标。
+# 默认构建常用 Windows/Linux/macOS 目标；传入 --current 时只构建当前平台。
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
@@ -48,13 +48,13 @@ write_checksums() {
 cd "$ROOT"
 mkdir -p dist
 
-if [ "${1:-}" = "--all" ]; then
+if [ "${1:-}" = "--current" ]; then
+  build_target "$("$GO_CMD" env GOOS)" "$("$GO_CMD" env GOARCH)"
+else
   build_target windows amd64
   build_target linux amd64
   build_target darwin amd64
   build_target darwin arm64
-else
-  build_target "$("$GO_CMD" env GOOS)" "$("$GO_CMD" env GOARCH)"
 fi
 
 write_checksums

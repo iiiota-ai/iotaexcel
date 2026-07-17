@@ -1,12 +1,12 @@
 param(
-  [switch]$All
+  [switch]$Current
 )
 
 $ErrorActionPreference = "Stop"
 
 # 构建 iotaexcel 单文件可执行程序。
 # Go build 只会编译 ./cmd/iotaexcel 及其正常依赖，不会把 *_test.go 或 tests/testdata 打包进可执行文件。
-# 默认构建当前平台；传入 -All 时构建常用 Windows/Linux/macOS 目标。
+# 默认构建常用 Windows/Linux/macOS 目标；传入 -Current 时只构建当前平台。
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Push-Location $Root
 
@@ -79,7 +79,13 @@ try {
   $goExe = Resolve-GoExe
   New-Item -ItemType Directory -Force -Path "dist" | Out-Null
 
-  if ($All) {
+  if ($Current) {
+    $goos = (& $goExe env GOOS).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "go env GOOS failed" }
+    $goarch = (& $goExe env GOARCH).Trim()
+    if ($LASTEXITCODE -ne 0) { throw "go env GOARCH failed" }
+    Build-Target $goExe $goos $goarch
+  } else {
     $targets = @(
       @{ GOOS = "windows"; GOARCH = "amd64" },
       @{ GOOS = "linux"; GOARCH = "amd64" },
@@ -89,12 +95,6 @@ try {
     foreach ($target in $targets) {
       Build-Target $goExe $target.GOOS $target.GOARCH
     }
-  } else {
-    $goos = (& $goExe env GOOS).Trim()
-    if ($LASTEXITCODE -ne 0) { throw "go env GOOS failed" }
-    $goarch = (& $goExe env GOARCH).Trim()
-    if ($LASTEXITCODE -ne 0) { throw "go env GOARCH failed" }
-    Build-Target $goExe $goos $goarch
   }
 
   Write-Checksums

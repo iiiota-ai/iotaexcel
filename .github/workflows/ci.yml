@@ -37,7 +37,7 @@ jobs:
         run: sh scripts/test.sh
 
       - name: Build release artifacts
-        run: sh scripts/build.sh --all
+        run: sh scripts/build.sh
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
