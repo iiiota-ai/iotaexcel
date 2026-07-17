@@ -97,16 +97,18 @@ iotaexcel decode --input ./out --output ./decoded --format json --print --print-
 
 对于自描述文件，`decode` 命令会从 `.bytes` 头部读取字段元数据。对于非自描述文件，它会从 `.bytes` 读取 `fieldNo`，再通过 `--schema-input` 解析字段名和字段类型。输出会保留字段顺序，并为每个输入 `.bytes` 文件写出一个结果文件。
 
+CSV 预览和 decode CSV 会在表头中恢复字段约束标记：key 字段显示为 `id#`，非 key 的唯一字段显示为 `name!`，必填字段显示为 `label*`，必填唯一字段显示为 `email!*`。
+
 使用 `--print` 时，decode 还会按读取顺序把可读 trace 输出到 stdout：
 
 - 文件和头部元数据：source、version、selfDescribing、schemaHash、keyFieldNo、fieldCount、rowCount
-- 字段元数据：字段顺序、fieldNo、字段名、类型、key 标记
+- 字段元数据：字段顺序、fieldNo、字段名、类型、fieldFlags、key、required、unique
 - 行数据：每行以及按字段元数据顺序排列的字段值
 
 `--print-mode concise` 只打印字面量，不打印说明标签。输出顺序为：
 
 - `relPath`、`sourcePath`、`IOTB`、`version`、`selfDescribing`、`schemaHash`、`keyFieldNo`、`fieldCount`
-- 每个字段一行，使用 tab 分隔：`fieldNo`、`name`、`type`
+- 每个字段一行，使用 tab 分隔：`fieldNo`、`name`、`type`、`fieldFlags`
 - `rowCount`
 - 每个单元格一行，使用 tab 分隔：`tag`、`fieldNo`、`wireType`、`value`
 
