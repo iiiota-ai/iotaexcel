@@ -11,11 +11,17 @@ const (
 	// DefaultGoPackage is the default package name for generated Go code.
 	DefaultGoPackage = "dataconfig"
 
+	// DefaultCppNamespace is the default namespace for generated C++ code.
+	DefaultCppNamespace = "DataConfig"
+
 	// CSharpLanguage is the codegen language identifier for C#.
 	CSharpLanguage = "csharp"
 
 	// GoLanguage is the codegen language identifier for Go.
 	GoLanguage = "go"
+
+	// CppLanguage is the codegen language identifier for C++.
+	CppLanguage = "cpp"
 )
 
 const (
@@ -36,6 +42,12 @@ const (
 
 	// GeneratedGoRuntimeFileName is the shared Go runtime file name.
 	GeneratedGoRuntimeFileName = "iotaexcel_runtime.go"
+
+	// GeneratedCppConfigFileSuffix is the generated C++ config header suffix.
+	GeneratedCppConfigFileSuffix = ".config.hpp"
+
+	// GeneratedCppRuntimeFileName is the shared C++ runtime header name.
+	GeneratedCppRuntimeFileName = "iotaexcel_runtime.hpp"
 )
 
 const (

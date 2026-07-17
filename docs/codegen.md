@@ -5,6 +5,7 @@ MVP 阶段代码生成目标语言为 C#。
 ```bash
 iotaexcel codegen --input ./excels --output ./generated --lang csharp
 iotaexcel codegen --input ./excels --output ./generated --lang go
+iotaexcel codegen --input ./excels --output ./generated --lang cpp
 ```
 
 ## 命名规则
@@ -162,3 +163,37 @@ Go type mapping:
 - `bytes` -> `[]byte`
 - `array<T>` -> `[]string`
 - `map<K,V>` -> `map[string]string`
+
+## C++ codegen
+
+`codegen --lang cpp` generates one `<ExcelName>.config.hpp` file per workbook and one shared `iotaexcel_runtime.hpp` file. The default C++ namespace is `DataConfig`; use `--package` to override it.
+
+Generated C++ APIs follow the same table/key model:
+
+```cpp
+auto table = DataConfig::ItemConfigTable::Load(data);
+const DataConfig::ItemConfig* item = nullptr;
+if (table.TryGetByid(1001, item)) {
+    // use item
+}
+```
+
+For resource systems that load by file name:
+
+```cpp
+auto table = DataConfig::ItemConfigTable::LoadFrom(readBytes);
+```
+
+`LoadFrom` asks `readBytes` for the generated `.bytes` file name, for example `Config_ItemConfig.bytes`.
+
+C++ type mapping:
+
+- `bool` -> `bool`
+- `int`, `int32` -> `std::int32_t`
+- `int64`, `datetime` -> `std::int64_t`
+- `float` -> `float`
+- `double` -> `double`
+- `string`, `ref<T>` -> `std::string`
+- `bytes` -> `std::vector<std::uint8_t>`
+- `array<T>` -> `std::vector<std::string>`
+- `map<K,V>` -> `std::unordered_map<std::string, std::string>`

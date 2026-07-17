@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"iotaexcel/internal/batch"
+	"iotaexcel/internal/codegen/cpp"
 	"iotaexcel/internal/codegen/csharp"
 	"iotaexcel/internal/codegen/golang"
 	"iotaexcel/internal/constants"
@@ -404,7 +405,7 @@ func validateOptions(command string, opts options) error {
 	if !isOneOf(opts.target, "client", "server", "both") {
 		return fmt.Errorf("unsupported --target %q", opts.target)
 	}
-	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage) {
+	if command == "codegen" && !isOneOf(strings.ToLower(opts.lang), constants.CSharpLanguage, constants.GoLanguage, constants.CppLanguage) {
 		return fmt.Errorf("unsupported --lang %q", opts.lang)
 	}
 	return nil
@@ -525,6 +526,17 @@ func handleWorkbook(command string, opts options, wb model.Workbook, logger *log
 				Target:    opts.target,
 				Overwrite: opts.overwrite,
 			})
+		case constants.CppLanguage:
+			namespace := opts.pkg
+			if namespace == constants.DefaultCSharpNamespace {
+				namespace = constants.DefaultCppNamespace
+			}
+			return cpp.Generate(wb, cpp.Options{
+				OutputDir: opts.output,
+				Namespace: namespace,
+				Target:    opts.target,
+				Overwrite: opts.overwrite,
+			})
 		default:
 			return nil, fmt.Errorf("unsupported --lang %q", opts.lang)
 		}
@@ -589,6 +601,7 @@ Usage:
   iotaexcel decode --config ./config.example
   iotaexcel codegen --input ./excels --output ./generated --lang csharp
   iotaexcel codegen --input ./excels --output ./generated --lang go
+  iotaexcel codegen --input ./excels --output ./generated --lang cpp
   iotaexcel codegen --config ./config.example
 
 Commands:

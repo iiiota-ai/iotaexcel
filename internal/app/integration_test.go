@@ -22,6 +22,7 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	binOut := t.TempDir()
 	codeOut := t.TempDir()
 	goCodeOut := t.TempDir()
+	cppCodeOut := t.TempDir()
 	jsonOut := t.TempDir()
 
 	exit := Run([]string{
@@ -236,6 +237,53 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	}
 	if !strings.Contains(string(goRuntimeContent), "func (r *iotaBytesReader) readVarUint64()") {
 		t.Fatalf("runtime Go does not contain TLV reader")
+	}
+
+	exit = Run([]string{
+		"codegen",
+		"--input", config,
+		"--output", cppCodeOut,
+		"--lang", constants.CppLanguage,
+		"--check-ref",
+		"--overwrite",
+		"--log-level", "error",
+	})
+	if exit != 0 {
+		t.Fatalf("valid cpp codegen exit = %d, want 0", exit)
+	}
+	cppGenerated := assertFile(t, cppCodeOut, "Config"+constants.GeneratedCppConfigFileSuffix)
+	cppRuntime := assertFile(t, cppCodeOut, constants.GeneratedCppRuntimeFileName)
+	cppContent, err := os.ReadFile(cppGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cppRuntimeContent, err := os.ReadFile(cppRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cppContent), "namespace "+constants.DefaultCppNamespace) {
+		t.Fatalf("generated C++ does not contain default namespace")
+	}
+	if !strings.Contains(string(cppContent), "struct ItemConfig") {
+		t.Fatalf("generated C++ does not contain ItemConfig struct")
+	}
+	if !strings.Contains(string(cppContent), "class ItemConfigTable") {
+		t.Fatalf("generated C++ does not contain ItemConfigTable class")
+	}
+	if !strings.Contains(string(cppContent), "using DataMap = std::unordered_map<KeyType, ItemConfig>") {
+		t.Fatalf("generated C++ does not contain typed datas map")
+	}
+	if !strings.Contains(string(cppContent), "bool TryGetByid(const KeyType& key, const ItemConfig*& value) const") {
+		t.Fatalf("generated C++ does not contain TryGetByid method")
+	}
+	if !strings.Contains(string(cppContent), "static ItemConfigTable Load(const std::vector<std::uint8_t>& data)") {
+		t.Fatalf("generated C++ does not contain Load")
+	}
+	if !strings.Contains(string(cppContent), `readBytes("Config_Item`+constants.ConfigSuffix+constants.BytesExtension+`")`) {
+		t.Fatalf("generated C++ loader does not use expected bytes file name")
+	}
+	if !strings.Contains(string(cppRuntimeContent), "std::uint64_t ReadVarUInt64()") {
+		t.Fatalf("runtime C++ does not contain TLV reader")
 	}
 }
 
