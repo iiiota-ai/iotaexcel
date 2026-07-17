@@ -136,6 +136,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("        if self_describing:\n")
 	b.WriteString("            reader.read_string()\n")
 	b.WriteString("            reader.read_string()\n")
+	b.WriteString("            reader.read_var_uint64()\n")
 	b.WriteString("    row_count = reader.read_var_uint64()\n")
 	b.WriteString("    rows: dict[" + keyTypeName + ", " + typeName + "] = {}\n")
 	for _, field := range uniqueFields {

@@ -39,11 +39,7 @@ func printVerbose(w io.Writer, file File) {
 
 	fmt.Fprintln(w, "fields:")
 	for index, field := range file.Fields {
-		keyMark := ""
-		if field.FieldNo == file.KeyFieldNo {
-			keyMark = " key=true"
-		}
-		fmt.Fprintf(w, "  [%d] fieldNo=%d name=%s type=%s%s\n", index+1, field.FieldNo, field.Name, field.Type.Raw, keyMark)
+		fmt.Fprintf(w, "  [%d] fieldNo=%d name=%s type=%s flags=%d key=%t required=%t unique=%t\n", index+1, field.FieldNo, field.Name, field.Type.Raw, field.Flags, field.Key, field.Required, field.Unique)
 	}
 
 	fmt.Fprintln(w, "rows:")
@@ -69,7 +65,7 @@ func printConcise(w io.Writer, file File) {
 	fmt.Fprintln(w, file.KeyFieldNo)
 	fmt.Fprintln(w, len(file.Fields))
 	for _, field := range file.Fields {
-		fmt.Fprintf(w, "%d\t%s\t%s\n", field.FieldNo, field.Name, field.Type.Raw)
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\n", field.FieldNo, field.Name, field.Type.Raw, field.Flags)
 	}
 	fmt.Fprintln(w, len(file.RowTraces))
 	for _, trace := range file.RowTraces {

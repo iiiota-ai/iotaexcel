@@ -61,6 +61,15 @@ func TestWriteBinaryEncodesTLVRows(t *testing.T) {
 	if _, ok := decoded.fields[12]; ok {
 		t.Fatalf("comment fieldNo 12 should not be encoded")
 	}
+	if got := decoded.flags[1]; got != constants.FieldFlagKey|constants.FieldFlagRequired|constants.FieldFlagUnique {
+		t.Fatalf("id flags = %d, want key|required|unique", got)
+	}
+	if got := decoded.flags[2]; got != constants.FieldFlagUnique {
+		t.Fatalf("name flags = %d, want unique", got)
+	}
+	if got := decoded.flags[3]; got != constants.FieldFlagRequired {
+		t.Fatalf("label flags = %d, want required", got)
+	}
 
 	first := decoded.rows[0]
 	if got := first.varints[1]; got != 2002 { // ZigZag(1001)
@@ -99,6 +108,7 @@ type decodedFile struct {
 	selfDescribing bool
 	keyFieldNo     uint64
 	fields         map[uint64]string
+	flags          map[uint64]uint64
 	rowCount       uint64
 	rows           []decodedRow
 }
@@ -126,12 +136,14 @@ func decodeBytesFixture(t *testing.T, data []byte) decodedFile {
 	selfDescribing := r.uvarint(t) != 0
 	fieldCount := r.uvarint(t)
 	fields := map[uint64]string{}
+	flags := map[uint64]uint64{}
 	for i := uint64(0); i < fieldCount; i++ {
 		fieldNo := r.uvarint(t)
 		if selfDescribing {
 			name := string(r.bytes(t))
 			_ = r.bytes(t) // type
 			fields[fieldNo] = name
+			flags[fieldNo] = r.uvarint(t)
 		}
 	}
 	rowCount := r.uvarint(t)
@@ -142,7 +154,7 @@ func decodeBytesFixture(t *testing.T, data []byte) decodedFile {
 	if r.pos != len(r.data) {
 		t.Fatalf("trailing bytes: %d", len(r.data)-r.pos)
 	}
-	return decodedFile{version: version, selfDescribing: selfDescribing, keyFieldNo: keyFieldNo, fields: fields, rowCount: rowCount, rows: rows}
+	return decodedFile{version: version, selfDescribing: selfDescribing, keyFieldNo: keyFieldNo, fields: fields, flags: flags, rowCount: rowCount, rows: rows}
 }
 
 // decodeRowFixture 解码单行 payload。

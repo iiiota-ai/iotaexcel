@@ -495,9 +495,13 @@ func loadDecodeSchemas(opts options, logger *logging.Logger) (map[string][]decod
 			decodedFields := make([]decode.Field, 0, len(fields))
 			for _, field := range fields {
 				decodedFields = append(decodedFields, decode.Field{
-					FieldNo: field.FieldNo,
-					Name:    field.Name,
-					Type:    field.Type,
+					FieldNo:  field.FieldNo,
+					Name:     field.Name,
+					Type:     field.Type,
+					Flags:    decodeFieldFlags(field),
+					Key:      field.IsKey,
+					Required: field.Required,
+					Unique:   field.Unique,
 				})
 			}
 			out[sheet.SchemaHash] = decodedFields
@@ -505,6 +509,20 @@ func loadDecodeSchemas(opts options, logger *logging.Logger) (map[string][]decod
 		}
 	}
 	return out, nil
+}
+
+func decodeFieldFlags(field model.Field) uint64 {
+	var flags uint64
+	if field.IsKey {
+		flags |= constants.FieldFlagKey
+	}
+	if field.Required {
+		flags |= constants.FieldFlagRequired
+	}
+	if field.Unique {
+		flags |= constants.FieldFlagUnique
+	}
+	return flags
 }
 
 // handleWorkbook 根据命令类型把一个已通过 schema 校验的 workbook 写出到目标格式。

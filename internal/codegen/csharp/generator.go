@@ -151,6 +151,7 @@ func renderClass(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("                {\n")
 	b.WriteString("                    reader.ReadString();\n")
 	b.WriteString("                    reader.ReadString();\n")
+	b.WriteString("                    reader.ReadVarUInt64();\n")
 	b.WriteString("                }\n")
 	b.WriteString("            }\n")
 	b.WriteString("            var rowCount = reader.ReadVarUInt64();\n")

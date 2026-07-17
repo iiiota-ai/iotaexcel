@@ -72,7 +72,7 @@ func writeCSV(path string, file File) error {
 	writer := csv.NewWriter(f)
 	header := make([]string, 0, len(file.Fields))
 	for _, field := range file.Fields {
-		header = append(header, field.Name)
+		header = append(header, previewFieldName(field))
 	}
 	if err := writer.Write(header); err != nil {
 		return err
@@ -106,4 +106,18 @@ func stringify(value any) string {
 		return ""
 	}
 	return fmt.Sprint(value)
+}
+
+func previewFieldName(field Field) string {
+	name := field.Name
+	if field.Key {
+		return name + "#"
+	}
+	if field.Unique {
+		name += "!"
+	}
+	if field.Required {
+		name += "*"
+	}
+	return name
 }

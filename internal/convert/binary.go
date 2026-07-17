@@ -69,6 +69,7 @@ func encodeSheet(sheet model.Sheet, target string, selfDescribing bool) ([]byte,
 		if selfDescribing {
 			writeString(&buf, field.Name)
 			writeString(&buf, field.Type.Raw)
+			writeUvarint(&buf, fieldFlags(field))
 		}
 	}
 	writeUvarint(&buf, uint64(len(sheet.Rows)))
@@ -172,6 +173,20 @@ func writeUvarint(buf *bytes.Buffer, value uint64) {
 	var tmp [10]byte
 	n := binary.PutUvarint(tmp[:], value)
 	buf.Write(tmp[:n])
+}
+
+func fieldFlags(field model.Field) uint64 {
+	var flags uint64
+	if field.IsKey {
+		flags |= constants.FieldFlagKey
+	}
+	if field.Required {
+		flags |= constants.FieldFlagRequired
+	}
+	if field.Unique {
+		flags |= constants.FieldFlagUnique
+	}
+	return flags
 }
 
 // zigzag 将有符号整数转换成适合 varint 的无符号整数。

@@ -65,7 +65,7 @@ tag = (fieldNo << 3) | wireType
 
 `schemaHash` 是规范化 schema 内容的 SHA-256 摘要。参与计算的内容包括 sheet、target、binaryVersion、key、字段名、字段类型、usage、fieldNo、wireType 和是否写入二进制的标记。
 
-使用 `convert --format bin --self-describing=true` 时，字段元数据包含 `fieldNo`、字段名和字段类型。此时 `.bytes` 文件可以独立 decode。
+使用 `convert --format bin --self-describing=true` 时，字段元数据包含 `fieldNo`、字段名、字段类型和 `fieldFlags`。此时 `.bytes` 文件可以独立 decode。`fieldFlags` 是 bitmask：`1` 表示 key，`2` 表示 required，`4` 表示 unique。
 
 使用 `convert --format bin --self-describing=false` 时，字段元数据只包含 `fieldNo`。这会减小文件体积，但 `decode` 时必须提供原始 Excel schema：
 

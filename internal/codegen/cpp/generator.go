@@ -163,6 +163,7 @@ func renderTypes(b *strings.Builder, sheet model.Sheet, target, workbookName str
 	b.WriteString("            if (selfDescribing) {\n")
 	b.WriteString("                (void)reader.ReadString();\n")
 	b.WriteString("                (void)reader.ReadString();\n")
+	b.WriteString("                (void)reader.ReadVarUInt64();\n")
 	b.WriteString("            }\n")
 	b.WriteString("        }\n")
 	b.WriteString("        const auto rowCount = reader.ReadVarUInt64();\n")

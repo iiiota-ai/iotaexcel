@@ -18,9 +18,13 @@ import (
 // Field 是 .bytes 文件内嵌字段元数据的结构化表示。
 // FieldNo 来自 Excel 列号，Name/Type 用于还原输出列名和按类型解码字段值。
 type Field struct {
-	FieldNo uint64         `json:"fieldNo"`
-	Name    string         `json:"name"`
-	Type    model.TypeSpec `json:"type"`
+	FieldNo  uint64         `json:"fieldNo"`
+	Name     string         `json:"name"`
+	Type     model.TypeSpec `json:"type"`
+	Flags    uint64         `json:"flags"`
+	Key      bool           `json:"key"`
+	Required bool           `json:"required"`
+	Unique   bool           `json:"unique"`
 }
 
 // File 是一个 .bytes 文件解码后的完整内容。
@@ -98,7 +102,8 @@ func ReadWithOptions(path, relPath string, opts ReadOptions) (File, error) {
 			if err != nil {
 				return File{}, fmt.Errorf("field %s type %q: %w", name, typeRaw, err)
 			}
-			field := Field{FieldNo: fieldNo, Name: name, Type: typeSpec}
+			flags := reader.uvarint()
+			field := fieldFromFlags(fieldNo, name, typeSpec, flags)
 			out.Fields = append(out.Fields, field)
 			fieldsByNo[fieldNo] = field
 		}
@@ -140,6 +145,18 @@ func ReadWithOptions(path, relPath string, opts ReadOptions) (File, error) {
 		return File{}, fmt.Errorf("trailing bytes: %d", len(reader.data)-reader.pos)
 	}
 	return out, nil
+}
+
+func fieldFromFlags(fieldNo uint64, name string, typ model.TypeSpec, flags uint64) Field {
+	return Field{
+		FieldNo:  fieldNo,
+		Name:     name,
+		Type:     typ,
+		Flags:    flags,
+		Key:      flags&constants.FieldFlagKey != 0,
+		Required: flags&constants.FieldFlagRequired != 0,
+		Unique:   flags&constants.FieldFlagUnique != 0,
+	}
 }
 
 // decodeRow 解码一行 TLV payload。

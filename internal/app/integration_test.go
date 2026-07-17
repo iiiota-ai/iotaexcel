@@ -87,6 +87,12 @@ func TestIntegrationValidConvertAndCodegen(t *testing.T) {
 	if !strings.Contains(string(decodedCSV), "Sword") {
 		t.Fatalf("decoded CSV does not contain Sword row")
 	}
+	if !strings.HasPrefix(string(decodedCSV), "id#,") {
+		t.Fatalf("decoded CSV key header should use # marker")
+	}
+	if strings.Contains(string(decodedCSV), "id!*,") {
+		t.Fatalf("decoded CSV key header should not expand # to !*")
+	}
 
 	slimBytesOut := t.TempDir()
 	exit = Run([]string{

@@ -58,6 +58,37 @@ func TestReadWithOptionsRequiresSchemaForSlimBytes(t *testing.T) {
 	}
 }
 
+func TestReadSelfDescribingFieldFlags(t *testing.T) {
+	data := []byte(constants.BytesMagic)
+	data = appendUvarint(data, constants.BytesFormatVersion)
+	data = appendBytes(data, []byte("schema"))
+	data = appendUvarint(data, 1)
+	data = appendUvarint(data, 1)
+	data = appendUvarint(data, 1)
+	data = appendUvarint(data, 1)
+	data = appendBytes(data, []byte("id"))
+	data = appendBytes(data, []byte("int"))
+	data = appendUvarint(data, constants.FieldFlagKey|constants.FieldFlagRequired|constants.FieldFlagUnique)
+	data = appendUvarint(data, 0)
+
+	path := filepath.Join(t.TempDir(), "Config_ItemConfig.bytes")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	decoded, err := Read(path, "Config_ItemConfig.bytes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Fields) != 1 {
+		t.Fatalf("fields = %d, want 1", len(decoded.Fields))
+	}
+	field := decoded.Fields[0]
+	if field.Flags != constants.FieldFlagKey|constants.FieldFlagRequired|constants.FieldFlagUnique || !field.Key || !field.Required || !field.Unique {
+		t.Fatalf("field flags = %#v", field)
+	}
+}
+
 func TestReadRejectsInvalidMagic(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bad.bytes")
 	if err := os.WriteFile(path, []byte("bad"), 0o644); err != nil {

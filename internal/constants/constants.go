@@ -104,3 +104,14 @@ const (
 	// BytesFormatVersion is the current .bytes format version.
 	BytesFormatVersion uint64 = 1
 )
+
+const (
+	// FieldFlagKey marks the primary key field in self-describing .bytes metadata.
+	FieldFlagKey uint64 = 1 << iota
+
+	// FieldFlagRequired marks a field that must not be empty in Excel data rows.
+	FieldFlagRequired
+
+	// FieldFlagUnique marks a field whose non-empty values must be unique.
+	FieldFlagUnique
+)

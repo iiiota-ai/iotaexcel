@@ -28,7 +28,7 @@ func WriteCSV(wb model.Workbook, opts Options) ([]string, error) {
 		header := make([]string, 0, len(sheet.Fields))
 		for _, field := range sheet.Fields {
 			if field.Usage != model.UsageComment {
-				header = append(header, field.Name)
+				header = append(header, previewFieldName(field))
 			}
 		}
 		if err := w.Write(header); err != nil {
@@ -58,4 +58,18 @@ func WriteCSV(wb model.Workbook, opts Options) ([]string, error) {
 		outputs = append(outputs, out)
 	}
 	return outputs, nil
+}
+
+func previewFieldName(field model.Field) string {
+	name := field.Name
+	if field.IsKey {
+		return name + "#"
+	}
+	if field.Unique {
+		name += "!"
+	}
+	if field.Required {
+		name += "*"
+	}
+	return name
 }
