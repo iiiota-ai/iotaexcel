@@ -1,20 +1,15 @@
 # 测试
 
-该目录用于存放 `iotaexcel` 的集成测试 fixture 和预期输出。
+该目录用于存放 `iotaexcel` 的集成测试 fixture。
 
 ## 目录结构
 
 - `testdata/excels/`：源 `.xlsx` fixture。
-- `testdata/expected/csv/`：预期 CSV 输出。
-- `testdata/expected/json/`：预期 JSON 输出。
-- `testdata/expected/bytes/`：预期 `.bytes` 输出或解码快照。
-- `testdata/expected/csharp/`：预期生成的 C# 文件。
-- `testdata/expected/go/`：预期生成的 Go 文件。
-- `testdata/expected/cpp/`：预期生成的 C++ 文件。
-- `testdata/expected/java/`：预期生成的 Java 文件。
-- `testdata/expected/javascript/`：预期生成的 JavaScript 文件。
-- `testdata/expected/python/`：预期生成的 Python 文件。
-- `testdata/expected/swift/`：预期生成的 Swift 文件。
+- `testdata/excels/valid/`：合法 `.xlsx` fixture。
+- `testdata/excels/invalid/`：预期转换失败的 `.xlsx` fixture。
+- `testdata/excels/nested/`：用于验证嵌套目录输出行为的 `.xlsx` fixture。
+
+测试会在临时目录中生成实际输出并直接断言关键内容；仓库内不维护 `testdata/expected/` 快照目录。
 
 单元测试应放在对应 Go 包旁边。跨包集成测试可以使用该目录作为共享测试数据。
 
