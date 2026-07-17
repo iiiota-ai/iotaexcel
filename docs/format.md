@@ -18,7 +18,7 @@
 - `int`、`int32`、`int64`：有符号整数，使用 ZigZag + varint 编码。
 - `float`、`double`：十进制文本。
 - `string`：文本，默认值为 `""`。
-- `bytes`：MVP 阶段按文本 payload 处理。
+- `bytes`：按 UTF-8 文本 payload 写入，生成代码按目标语言的字节容器读取。
 - `datetime`：格式为 `YYYY-MM-DD HH:mm:ss`，默认值为公元 1 年对应的秒级时间戳。
 - `array<T>`：示例 `a|b|c`。
 - `map<K,V>`：示例 `a:1|b:2`。
@@ -74,7 +74,7 @@ iotaexcel decode --input ./out --schema-input ./excels --output ./decoded --form
 - fixed64：`double`，小端 IEEE 754。
 - length-delimited：`string`、`bytes`、`array<T>`、`map<K,V>`、`ref<T>`。
 
-MVP 阶段，嵌套值按 UTF-8 文本 payload 存储：`array<T>` 使用 `|` 分隔，`map<K,V>` 使用 `key:value|key:value` 形式，并按 key 排序以保证输出稳定。
+当前嵌套值按 UTF-8 文本 payload 存储：`array<T>` 使用 `|` 分隔，`map<K,V>` 使用 `key:value|key:value` 形式，并按 key 排序以保证输出稳定。
 
 ## Decode 输出
 

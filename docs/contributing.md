@@ -43,23 +43,9 @@ docs(format): 补充 ref<Item> 单元格示例
 
 每次修改用户可见能力时，都需要在同一次变更中同步更新 `README.md` 或 `docs/`。如果某次代码变更不需要更新文档，需要在 PR 或提交说明中解释原因。
 
-## 测试目录
+## 测试
 
-单元测试应放在被测试 Go 包的同级目录中。
-
-跨包集成测试共享的 fixture 放在 `tests/testdata/` 下：
-
-- `tests/testdata/excels/`：源 `.xlsx` fixture。
-- `tests/testdata/expected/csv/`：预期 CSV 输出。
-- `tests/testdata/expected/json/`：预期 JSON 输出。
-- `tests/testdata/expected/bytes/`：预期 `.bytes` 输出或 decode 快照。
-- `tests/testdata/expected/csharp/`：预期生成的 C# 文件。
-- `tests/testdata/expected/go/`：预期生成的 Go 文件。
-- `tests/testdata/expected/cpp/`：预期生成的 C++ 文件。
-- `tests/testdata/expected/java/`：预期生成的 Java 文件。
-- `tests/testdata/expected/javascript/`：预期生成的 JavaScript 文件。
-- `tests/testdata/expected/python/`：预期生成的 Python 文件。
-- `tests/testdata/expected/swift/`：预期生成的 Swift 文件。
+单元测试应放在被测试 Go 包的同级目录中。跨包集成测试、fixture 目录结构和 fixture 生成脚本见 `tests/README.md`。
 
 ## 验证
 
